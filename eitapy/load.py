@@ -36,7 +36,7 @@ class loaded_evolutionary_track(object):
         """
         
         if self.file_format == 'PARSEC':
-            load_parsec(self)
+            self._load_parsec(self)
     
     
     def _load_parsec(self):
