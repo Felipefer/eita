@@ -44,14 +44,12 @@ class loaded_evolutionary_track(object):
         used internally to load parsec data format
         """
         
-        
         filename  = PARSEC_filename(Z    = self.Z, 
                                     Y    = self.Y, 
                                     mass = self.mass)
         
         directory = PARSEC_directory(Z   = self.Z, 
                                      Y   = self.Y)
-        
         
         self.filename = directory+'/'+filename
         
@@ -68,7 +66,8 @@ def PARSEC_filename(Z, Y, mass):
     Y_fmt = str(Y)
     OUTA = '1.77' if mass <= 0.7 else '1.74'
     
-    return "Z{:s}Y{:s}OUTA{:s}_F7_M{:07.3f}.DAT".format(Z_fmt, Y_fmt, OUTA, mass)
+    return "Z{:s}Y{:s}OUTA{:s}_F7_M{:07.3f}.DAT".format(Z_fmt, Y_fmt, 
+                                                        OUTA,  mass)
 
 
 def PARSEC_directory(Z, Y):
