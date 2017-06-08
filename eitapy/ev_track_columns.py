@@ -1,3 +1,7 @@
+__version__ = "0.0.1"
+__author__  = "Felipe de Almeida Fernandes"
+__email__   = "felipefer42@gmail.com"
+
 """
 Defines the evolutionary track's possible columns and the relations between them
 """
@@ -20,7 +24,7 @@ class Ev_track_column(object):
         self.unit = unit
         self.log = log
     
-    def add_PARSEC_info(self, PARSEC_col_name, PARSEC_col_id, 
+    def add_PARSEC_info(self, PARSEC_col_name, PARSEC_col_id,
                               PARSEC_col_note = ""):
         
         """

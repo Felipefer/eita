@@ -1,3 +1,7 @@
+__version__ = "0.0.1"
+__author__  = "Felipe de Almeida Fernandes"
+__email__   = "felipefer42@gmail.com"
+
 """
 load.py contains the functions used to load evolutionary tracks and isochrones
 """
@@ -26,7 +30,7 @@ class LoadedEvolutionaryTrack(object):
         self.Z    = Z
         
         # Calculate Helium abundances
-        self.Y = utils.abundanceY(Z)
+        self.Y = np.around(utils.abundanceY(Z), 3)
         
         self.file_format = file_format
 
@@ -37,8 +41,13 @@ class LoadedEvolutionaryTrack(object):
         param path: path leading to the file containing the data
         """
         
-        if self.file_format == 'PARSEC':
+        if self.loaded:
+           raise Warning(("Already loaded with "
+                        "{0} set").format(self.file_format))
+        
+        elif self.file_format == 'PARSEC':
             self._load_parsec(path)
+            self.loaded = True
     
     def _load_parsec(self, path):
         """
@@ -55,7 +64,7 @@ class LoadedEvolutionaryTrack(object):
         self.filename = directory+'/'+filename
         
         # Load PARSEC file into ev_track_data
-        ev_track_data = np.loadtxt(path+'/'+filename, skiprows = 1)
+        ev_track_data = np.loadtxt(path+'/'+self.filename, skiprows = 1)
         
         # Columns that are present in the PARSEC tracks
         columns = [etcol.mass, etcol.age, etcol.log_L, etcol.log_Teff,
