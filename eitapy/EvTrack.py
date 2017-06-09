@@ -1,6 +1,7 @@
 __version__ = "0.0.1"
 __author__  = "Felipe de Almeida Fernandes"
 __email__   = "felipefer42@gmail.com"
+__date__    = "June 2017"
 
 #\TODO expand this docstring
 """
