@@ -76,6 +76,7 @@ if __name__ == "__main__":
     print "Loading took {0} seconds".format(time() - t0)
     
     print dir(track)
+    print track.column_names
     
     plt.plot(track.log_Teff, track.log_L)
     plt.gca().invert_xaxis()
