@@ -22,6 +22,7 @@
       <option name="ignoredIdentifiers">
         <list>
           <option value="load" />
+          <option value="EvTrack" />
         </list>
       </option>
     </inspection_tool>

@@ -12,6 +12,15 @@ import ev_track_columns as etcol
 
 ################################################################################
 
+_allowed_file_formats = ['PARSEC']
+
+_columns_parsec = [etcol.mass, etcol.age, etcol.log_L, etcol.log_Teff,
+                   etcol.log_R, etcol.mdot, etcol.he_core_mass,
+                   etcol.c_core_mass, etcol.center_H, etcol.center_He,
+                   etcol.center_C, etcol.center_O, etcol.LH_frac,
+                   etcol.LHe_frac, etcol.LC_frac, etcol.LNeutr_frac,
+                   etcol.Lgrav_frac, etcol.surf_H, etcol.surf_He, etcol.surf_C,
+                   etcol.surf_N, etcol.surf_O, etcol.phase]
 
 class LoadedEvolutionaryTrack(object):
     """
@@ -19,7 +28,7 @@ class LoadedEvolutionaryTrack(object):
     object of the class Ev_Track
     """
     
-    def __init__(self, mass, Z, file_format = 'PARSEC'):
+    def __init__(self, mass, Z, path, file_format = 'PARSEC'):
         """
         param file_format: format used in the evolutionary track file
         """
@@ -33,7 +42,9 @@ class LoadedEvolutionaryTrack(object):
         self.Y = np.around(utils.abundanceY(Z), 3)
         
         self.file_format = file_format
-
+        
+        self.load(path)
+        
     def load(self, path):
         """
         loads data from path to loaded_evolutionary_track
@@ -45,6 +56,10 @@ class LoadedEvolutionaryTrack(object):
            raise Warning(("Already loaded with "
                         "{0} set").format(self.file_format))
         
+        # \TODO: Warning!!!
+        # No matter the file_format, the load function used must always include
+        # the attribute self.column_names: a list with the names of all loaded
+        # attributes
         elif self.file_format == 'PARSEC':
             self._load_parsec(path)
             self.loaded = True
@@ -67,13 +82,7 @@ class LoadedEvolutionaryTrack(object):
         ev_track_data = np.loadtxt(path+'/'+self.filename, skiprows = 1)
         
         # Columns that are present in the PARSEC tracks
-        columns = [etcol.mass, etcol.age, etcol.log_L, etcol.log_Teff,
-                   etcol.log_R, etcol.mdot, etcol.he_core_mass,
-                   etcol.c_core_mass, etcol.center_H, etcol.center_He,
-                   etcol.center_C, etcol.center_O, etcol.LH_frac,
-                   etcol.LHe_frac, etcol.LC_frac, etcol.LNeutr_frac,
-                   etcol.Lgrav_frac, etcol.surf_H, etcol.surf_He, etcol.surf_C,
-                   etcol.surf_N, etcol.surf_O, etcol.phase]
+        columns = _columns_parsec
         
         self.column_names = []
         
