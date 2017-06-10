@@ -41,7 +41,7 @@ class Ev_track_column(object):
 ################################################################################
 
 # Should be imported and used as et_col.age
-age = Ev_track_column(name        = "stellar_age",
+age = Ev_track_column(name        = "age",
                       description = "age of the star",
                       unit        = "years",
                       log         = False)
@@ -51,7 +51,7 @@ age.add_PARSEC_info(PARSEC_col_name = "AGE",
 
 ################################################################################
 
-log_age = Ev_track_column(name        = "log_stellar_age",
+log_age = Ev_track_column(name        = "log_age",
                           description = "age of the star",
                           unit        = "years",
                           log         = True)

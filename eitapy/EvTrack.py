@@ -68,11 +68,31 @@ class EvTrack(object):
         # Create data array:
         self.array = np.empty([self.Nlines, self.Ncols], dtype = float)
         self.array[:] = np.nan
+        self.column_index = {}
         
         # Fill the array and point the attributes to it:
         for i in range(self.Ncols):
             
             column = self.column_names[i]
             
+            self.column_index[column] = i
             self.array[:,i] = getattr(EvTrackData, column)
             setattr(self, column, self.array[:,i])
+    
+    
+    def simplify_array(self, columns):
+        """
+        Return a new data array containing only data from the chosen columns
+        
+        :param columns: string or list of strings
+        :return: data array
+        """
+        
+        # Obtain column indexes
+        index = []
+        for column in columns:
+            index.append(self.column_index[column])
+            
+        array = self.array[:, index]
+        
+        return array
