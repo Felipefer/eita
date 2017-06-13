@@ -9,6 +9,7 @@ EvTrack.py contains the functions used to work with evolutionary tracks
 """
 
 import numpy as np
+from matplotlib import pyplot as plt
 import utils
 import load
 
@@ -96,3 +97,24 @@ class EvTrack(object):
         array = self.array[:, index]
         
         return array
+
+    def plot(self, column_name1, column_name2):
+        """
+        Uses matplotlib.pyplot.plot to plot self.column_name1 as x and
+        self.column_name2 as y
+
+        :param column_name1: string that must be in self.column_names
+        :param column_name2: string that must be in self.column_names
+        """
+
+        # First test if column_name1(2) is in the self.column_names list
+        if any((column_name1 not in self.column_names,
+                column_name2 not in self.column_names)):
+
+            raise ValueError(("Only column names in self.column_names are",
+                              "accepted"))
+
+        x = getattr(self, column_name1)
+        y = getattr(self, column_name2)
+
+        plt.plot(x, y)

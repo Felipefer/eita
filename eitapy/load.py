@@ -28,7 +28,7 @@ class LoadedEvolutionaryTrack(object):
     object of the class Ev_Track
     """
     
-    def __init__(self, mass, Z, path, file_format = 'PARSEC'):
+    def __init__(self, mass, Z, path, file_format = 'PARSEC', auto_load = True):
         """
         param file_format: format used in the evolutionary track file
         """
@@ -42,8 +42,9 @@ class LoadedEvolutionaryTrack(object):
         self.Y = np.around(utils.abundanceY(Z), 3)
         
         self.file_format = file_format
-        
-        self.load(path)
+
+        if auto_load:
+            self.load(path)
         
     def load(self, path):
         """
