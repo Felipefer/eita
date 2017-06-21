@@ -178,7 +178,8 @@ class EvTrack(object):
         # Update column names
         self.column_names = column_names
 
-    def interp_phase(self, N = 10000, phase = None, **kargs):
+    def interp_phase(self, N = 10000, phase = None, return_EvTrack = True,
+                     **kargs):
         """
         Interpolates the evolutionary track producing :param N points evenly
         distributed according to evolutionary phase OR interpolate the data
@@ -197,23 +198,30 @@ class EvTrack(object):
             raise AttributeError(("Object does not contain the phase attribute,"
                                   " therefore, it can't be interpolated."))
 
-        # Define values to interpolate
-        if phase is None:
-            # Remove possible nan values from self.phase
-            phase_tmp = self.phase[~np.isnan(self.phase)]
-            phase = np.linspace(phase_tmp.min(), phase_tmp.max(), N)
-
-        # Create the interpolation function
-        interp_function = interp1d(x = self.phase,
-                                   y = self.array,
-                                   axis = 0,
+        # If a new EvTrack is to be created, copy, evaluate and return it
+        if return_EvTrack:
+            new_track = copy.deepcopy(self)
+            new_track.interp_phase(N = N, phase = phase, return_EvTrack=False,
                                    **kargs)
-        '''
-        \TODO also consider a way to let the user choose if he/she wants to
-        update the array or create a new object with the new data
-        '''
-        # Update array
-        self.array = interp_function(phase)
 
-        # Update attributes
-        self._update_colname_attributes()
+            return new_track
+
+        # Otherwise, only evaluate
+        else:
+            # Define values to interpolate
+            if phase is None:
+                # Remove possible nan values from self.phase
+                phase_tmp = self.phase[~np.isnan(self.phase)]
+                phase = np.linspace(phase_tmp.min(), phase_tmp.max(), N)
+
+            # Create the interpolation function
+            interp_function = interp1d(x = self.phase,
+                                       y = self.array,
+                                       axis = 0,
+                                       **kargs)
+
+            # Update array
+            self.array = interp_function(phase)
+
+            # Update attributes
+            self._update_colname_attributes()

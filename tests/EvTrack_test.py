@@ -53,8 +53,7 @@ def test_EvTrack_return_simplified_array():
     return array
 
 if __name__ == "__main__":
-    run = 'Y'
-    run = raw_input("Run EvTrack.simplify_array test? (Y/n): ")
+    run = raw_input("Run EvTrack.simplify_array test? (y/N): ")
 
     if run in ('Y', 'y'):
         print "Running EvTrack.simplify_array test"
@@ -78,8 +77,7 @@ def test_EvTrack_plot():
     plt.show()
 
 if __name__ == "__main__":
-    run = 'Y'
-    run = raw_input("Run EvTrack.plot test? (Y/n): ")
+    run = raw_input("Run EvTrack.plot test? (y/N): ")
 
     if run in ('Y', 'y'):
         print "Running EvTrack.plot test"
@@ -89,16 +87,29 @@ if __name__ == "__main__":
 def test_EvTrack_interpolate_phase(N = 10000):
     track = _initialize_track_for_test()
 
-    print "Interpolating EvTrack by phase (N = {0})".format(N)
+    print ("Interpolating EvTrack by phase - creating new EvTrack - "
+           "(N = {0})").format(N)
     t0 = time()
-    track.interp_phase(N = N)
-    print "Interpolating took {0} seconds".format(time() - t0)
+    new_track = track.interp_phase(N = N)
+    print ("Interpolating  - creating new EvTrack - "
+           "took {0} seconds").format(time() - t0)
+
+    print "\nold track shape: {0}".format(track.array.shape)
+    print "new track shape: {0}".format(new_track.array.shape)
+
+    print ("Interpolating EvTrack by phase - updating old EvTrack - "
+           "(N = {0})").format(N)
+    t0 = time()
+    track.interp_phase(N=N, return_EvTrack = False)
+    print ("Interpolating  - updating old EvTrack - "
+           "took {0} seconds").format(time() - t0)
+
+    print "\nupdated track shape: {0}".format(track.array.shape)
 
     return track
 
 if __name__ == "__main__":
-    run = 'Y'
-    run = raw_input("Run EvTrack.interp_phase test? (Y/n): ")
+    run = raw_input("Run EvTrack.interp_phase test? (y/N): ")
 
     if run in ('Y', 'y'):
         print "Running EvTrack.interp_phase test"
@@ -142,8 +153,7 @@ def test_EvTrack_interpolate_phase_times():
     plt.show()
 
 if __name__ == '__main__':
-    run = 'Y'
-    run = raw_input("Run EvTrack.interp_phase times test? (Y/n): ")
+    run = raw_input("Run EvTrack.interp_phase times test? (y/N): ")
 
     if run in ('Y', 'y'):
         print "Running EvTrack.interp_phase times test"
@@ -191,8 +201,7 @@ def test_EvTrack_simplify_array():
     return new_track
 
 if __name__ == '__main__':
-    run = 'Y'
-    run = raw_input("Run EvTrack.simplify_array test? (Y/n): ")
+    run = raw_input("Run EvTrack.simplify_array test? (y/N): ")
 
     if run in ('Y', 'y'):
         print "Running EvTrack.simplify_array test"
