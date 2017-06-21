@@ -8,9 +8,11 @@ __date__    = "June 2017"
 EvTrack.py contains the functions used to work with evolutionary tracks
 """
 
+import copy
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
+
 import utils
 import load
 
@@ -82,7 +84,7 @@ class EvTrack(object):
             setattr(self, column, self.array[:,i])
     
     
-    def simplify_array(self, columns):
+    def return_simplified_array(self, columns):
         """
         Return a new data array containing only data from the chosen columns
         
@@ -98,6 +100,35 @@ class EvTrack(object):
         array = self.array[:, index]
         
         return array
+
+    def simplify_array(self, columns, return_EvTrack = True):
+        """
+        Simplify the data array for it to contain only the chosen columns
+
+        :param columns: string or list of strings
+        :param return_EvTrack: if true, returns a new EvTrack object. If false,
+                               updates the data in this object.
+        """
+
+        # Use recursivity if the user desires to return a new EvTrack object
+        # with the simplified array
+        if return_EvTrack:
+            new_track = copy.deepcopy(self)
+            new_track.simplify_array(columns, return_EvTrack = False)
+
+            return new_track
+
+        else:
+            # Obtain column indexes
+            index = []
+            for column in columns:
+                index.append(self.column_index[column])
+
+            # Update self.array
+            self.array = self.array[:, index]
+
+            # Update attributes
+            self._update_colname_attributes(column_names = columns)
 
     def plot(self, column_name1, column_name2, **kargs):
         """
@@ -120,14 +151,32 @@ class EvTrack(object):
 
         plt.plot(x, y, **kargs)
 
-    def _update_colname_attributes(self):
+    def _update_colname_attributes(self, column_names = None):
         """
         used internally when self.array is reassigned
         """
+
+        # Assign all columns if None is assigned
+        if column_names is None:
+            column_names = self.column_names
+
+        # Delete attributes that are no longer used
+        # \TODO this can be written better
+        for i in range(len(self.column_names)):
+            if self.column_names[i] not in column_names:
+                delattr(self, self.column_names[i])
+
+        # Update number of columns
+        self.Ncols = len(column_names)
+
+        # Reassing remaining columns for the new data in the array
         for i in range(self.Ncols):
-            column = self.column_names[i]
+            column = column_names[i]
             self.column_index[column] = i
             setattr(self, column, self.array[:, i])
+
+        # Update column names
+        self.column_names = column_names
 
     def interp_phase(self, N = 10000, phase = None, **kargs):
         """
