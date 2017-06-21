@@ -164,10 +164,18 @@ def test_EvTrack_simplify_array():
     print ("Simplifying EvTrack creating a new EvTrack "
            "took {0} seconds").format(time()-t0)
 
-    print track.array.shape
-    print dir(track)
-    print new_track.array.shape
-    print dir(new_track)
+    print 'Old track array shape is {0}'.format(track.array.shape)
+    print 'Old track dir(): {0}'.format(dir(track))
+    print 'New track array shape is {0}'.format(new_track.array.shape)
+    print 'New track dir(): {0}'.format(dir(new_track))
+
+    track.plot('log_Teff', 'log_L', color = 'blue',
+               linestyle = '--', zorder = 1)
+    new_track.plot('log_Teff', 'log_L', color = 'red',
+                   linestyle = '-', zorder = 0)
+
+    plt.gca().invert_xaxis()
+    plt.show()
 
     print "\nTesting simplification updating an old EvTrack"
     print "Simplifying EvTrack"
