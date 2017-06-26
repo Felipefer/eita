@@ -8,7 +8,12 @@ __date__    = "June 2017"
 EvTrack.py contains the functions used to work with evolutionary tracks
 """
 
+import copy
 import numpy as np
+from matplotlib import pyplot as plt
+from scipy.interpolate import interp1d
+
+import config
 import utils
 import load
 
@@ -21,10 +26,10 @@ class EvTrack(object):
     def __init__(self, mass, Z, path, file_format = 'PARSEC'):
         
         # Check if given file_format is supported in this version of eitapy
-        if file_format not in load._allowed_file_formats:
+        if file_format not in load.allowed_file_formats:
             raise ValueError(("{0} is not a supported file format.\n"
                               "Supported formats are {0}."
-                              "").format(load._allowed_file_formats))
+                              "").format(load.allowed_file_formats))
         
         # Load EvTrack according to the file format
         EvTrackData = None
@@ -35,7 +40,7 @@ class EvTrack(object):
         
         # End of loading
         # Check if loading went fine
-        if EvTrackData == None:
+        if EvTrackData is None:
             raise utils.Loading("Could not load evolutionary track file")
         
         # Attributes
@@ -76,11 +81,11 @@ class EvTrack(object):
             column = self.column_names[i]
             
             self.column_index[column] = i
-            self.array[:,i] = getattr(EvTrackData, column)
-            setattr(self, column, self.array[:,i])
+            self.array[:, i] = getattr(EvTrackData, column)
+            setattr(self, column, self.array[:, i])
     
     
-    def simplify_array(self, columns):
+    def return_simplified_array(self, columns):
         """
         Return a new data array containing only data from the chosen columns
         
@@ -96,3 +101,139 @@ class EvTrack(object):
         array = self.array[:, index]
         
         return array
+
+    def simplify_array(self, columns, return_EvTrack = True):
+        """
+        Simplify the data array for it to contain only the chosen columns
+
+        :param columns: string or list of strings
+        :param return_EvTrack: if true, returns a new EvTrack object. If false,
+                               updates the data in this object.
+        """
+
+        # Use recursivity if the user desires to return a new EvTrack object
+        # with the simplified array
+        if return_EvTrack:
+            new_track = copy.deepcopy(self)
+            new_track.simplify_array(columns, return_EvTrack = False)
+
+            return new_track
+
+        else:
+            # Obtain column indexes
+            index = []
+            for column in columns:
+                index.append(self.column_index[column])
+
+            # Update self.array
+            self.array = self.array[:, index]
+
+            # Update attributes
+            self._update_colname_attributes(column_names = columns)
+
+    def plot(self, column_name1, column_name2, **kargs):
+        """
+        Uses matplotlib.pyplot.plot to plot self.column_name1 as x and
+        self.column_name2 as y
+
+        :param column_name1: string that must be in self.column_names
+        :param column_name2: string that must be in self.column_names
+        """
+
+        # First test if column_name1(2) is in the self.column_names list
+        if any((column_name1 not in self.column_names,
+                column_name2 not in self.column_names)):
+
+            raise ValueError(("Only column names in self.column_names are "
+                              "accepted"))
+
+        x = getattr(self, column_name1)
+        y = getattr(self, column_name2)
+
+        plt.plot(x, y, **kargs)
+
+    def _update_colname_attributes(self, column_names = None):
+        """
+        used internally when self.array is reassigned
+        """
+
+        # Assign all columns if None is assigned
+        if column_names is None:
+            column_names = self.column_names
+
+        # Delete attributes that are no longer used
+        # \TODO this can be written better
+        for i in range(len(self.column_names)):
+            if self.column_names[i] not in column_names:
+                delattr(self, self.column_names[i])
+
+        # Update number of columns
+        self.Ncols = len(column_names)
+
+        # Reassing remaining columns for the new data in the array
+        for i in range(self.Ncols):
+            column = column_names[i]
+            self.column_index[column] = i
+            setattr(self, column, self.array[:, i])
+
+        # Update column names
+        self.column_names = column_names
+
+    def interp_phase(self, N = 10000, phase = None, return_EvTrack = True,
+                     **kargs):
+        """
+        Interpolates the evolutionary track producing :param N points evenly
+        distributed according to evolutionary phase OR interpolate the data
+        for the given :param phase numbers.
+
+        :param N: integer like.
+        :param phase: list like.
+
+        also accepted any keyword argument for the function interp1d from the
+        scipy.interpolate module
+        """
+
+        # First test if the evolutionary track has the phase attribute that
+        # is needed for the interpolation
+        if not hasattr(self, 'phase'):
+            raise AttributeError(("Object does not contain the phase attribute,"
+                                  " therefore, it can't be interpolated."))
+
+        # If a new EvTrack is to be created, copy, evaluate and return it
+        if return_EvTrack:
+            new_track = copy.deepcopy(self)
+            new_track.interp_phase(N = N, phase = phase, return_EvTrack=False,
+                                   **kargs)
+
+            return new_track
+
+        # Otherwise, only evaluate
+        else:
+            # Define values to interpolate
+            if phase is None:
+                # Remove possible nan values from self.phase
+                phase_tmp = self.phase[~np.isnan(self.phase)]
+                phase = np.linspace(phase_tmp.min(), phase_tmp.max(), N)
+
+            # Create the interpolation function
+            interp_function = interp1d(x = self.phase,
+                                       y = self.array,
+                                       axis = 0,
+                                       **kargs)
+
+            # Update array
+            self.array = interp_function(phase)
+
+            # Update attributes
+            self._update_colname_attributes()
+            
+    def save(self, filename = None, folder = None, columns = None, **kargs):
+        """
+        Saves the array to a file
+        
+        :param columns:
+        :return:
+        """
+        
+        
+        pass
