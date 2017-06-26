@@ -13,6 +13,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 
+import config
 import utils
 import load
 
@@ -39,7 +40,7 @@ class EvTrack(object):
         
         # End of loading
         # Check if loading went fine
-        if EvTrackData == None:
+        if EvTrackData is None:
             raise utils.Loading("Could not load evolutionary track file")
         
         # Attributes
@@ -80,8 +81,8 @@ class EvTrack(object):
             column = self.column_names[i]
             
             self.column_index[column] = i
-            self.array[:,i] = getattr(EvTrackData, column)
-            setattr(self, column, self.array[:,i])
+            self.array[:, i] = getattr(EvTrackData, column)
+            setattr(self, column, self.array[:, i])
     
     
     def return_simplified_array(self, columns):
@@ -225,3 +226,14 @@ class EvTrack(object):
 
             # Update attributes
             self._update_colname_attributes()
+            
+    def save(self, filename = None, folder = None, columns = None, **kargs):
+        """
+        Saves the array to a file
+        
+        :param columns:
+        :return:
+        """
+        
+        
+        pass
