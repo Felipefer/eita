@@ -45,6 +45,7 @@ class EvTrack(object):
         
         # Attributes
         self.mass = mass
+        self.M    = mass
         self.Z    = Z
         self.Y    = EvTrackData.Y
         
@@ -53,6 +54,7 @@ class EvTrack(object):
         # is no longer a 'special case'
         self.file_origin  = file_format
         self.column_names = EvTrackData.column_names
+        self.column_fmt   = EvTrackData.column_fmt
 
         # Get number of columns
         self.Ncols  = len(self.column_names)
@@ -74,7 +76,7 @@ class EvTrack(object):
         self.array = np.empty([self.Nlines, self.Ncols], dtype = float)
         self.array[:] = np.nan
         self.column_index = {}
-        
+
         # Fill the array and point the attributes to it:
         for i in range(self.Ncols):
             
@@ -161,8 +163,9 @@ class EvTrack(object):
         if column_names is None:
             column_names = self.column_names
 
-        # Delete attributes that are no longer used
+        # Delete attributes that are no longer used and update self.column_fmt
         # \TODO this can be written better
+
         for i in range(len(self.column_names)):
             if self.column_names[i] not in column_names:
                 delattr(self, self.column_names[i])
@@ -171,10 +174,18 @@ class EvTrack(object):
         self.Ncols = len(column_names)
 
         # Reassing remaining columns for the new data in the array
+        self.column_index = {}
+        new_column_fmt    = {}
+
         for i in range(self.Ncols):
             column = column_names[i]
             self.column_index[column] = i
             setattr(self, column, self.array[:, i])
+
+            # Also update self.column_fmt
+            new_column_fmt[column] = self.column_fmt[column]
+
+        self.column_fmt = new_column_fmt
 
         # Update column names
         self.column_names = column_names
@@ -224,16 +235,109 @@ class EvTrack(object):
             # Update array
             self.array = interp_function(phase)
 
+            # Update self.Nlines
+            self.Nlines = len(phase)
+
             # Update attributes
             self._update_colname_attributes()
-            
-    def save(self, filename = None, folder = None, columns = None, **kargs):
+
+    def interpolate_age(self, age, columns = None, **kargs):
         """
-        Saves the array to a file
-        
-        :param columns:
-        :return:
+        returns interpolated data array for a given age
+
+        :param age (years): desired interpolated age, float.
+        :param     columns: list of strings with column names to be
+                            interpolated.
+        :param     **kargs: parameters passed to interp1d function.
+        :returns array containing data for the wanted columns and given age.
         """
+
+        # Deal with default values
+        if columns is None:
+            columns = self.column_names
+
+        # Check if "age" attribute is present and try to run with "log_age" if
+        # it is not.
+        if not hasattr(self, 'age'):
+            try:
+                pass
+                # \todo complete here once interpolate_log_age is done and try it
+            except:
+                raise AttributeError(("Track does not have age attribute to "
+                                     "interpolate"))
+
+        # Get simplified array to interpolate
+        array = self.return_simplified_array(columns)
+
+        array_interp_function = interp1d(self.age, array, axis = 0, **kargs)
+        age_array_line = array_interp_function(age)
+
+        return age_array_line
+    
+
+    def default_save_filename(self):
+        """
+        returns the default filename used by method "save" to create a .dat file
+        """
+
+        filename0 = "EvTrack_{0}".format(self.file_origin)
+        filename1 = "_M{:07.3f}_Z{:07.5f}_Y{:07.5f}.dat".format(self.M,
+                                                             self.Z,
+                                                             self.Y)
+
+        filename = filename0+filename1
+        return filename
+
+    def save(self, filename = None, folder = None, columns = None,
+             delimiter = ',', verbose = False, **kargs):
+        """
+        Saves the EvTrack data array to a file.
         
-        
-        pass
+        :param  filename: name of the file to be created.
+        :param    folder: directory where file will be stored.
+        :param   columns: list of strings with the name of the columns to be
+                          saved.
+        :param delimiter: string used as column separator
+        :param   **kargs: arguments passed to the np.savetxt function
+        """
+
+        # Deal with default values
+        if folder is None:
+            folder = config.default_evtrack_save_folder
+
+        if filename is None:
+            filename = self.default_save_filename()
+
+        if columns is None:
+            columns = self.column_names
+
+        # Prepare fmt for np.savetxt
+        fmt = []
+
+        for col in columns:
+            fmt.append(self.column_fmt[col])
+
+        # Prepare header
+        header = "#" + ("{0} ".format(delimiter)).join(columns) + "\n"
+
+        if verbose:
+            print "\nSaving to file {0},".format(filename)
+            print "in the folder {0},".format(folder)
+            print "using the formats {0}.".format(self.column_fmt)
+
+        # Get the array
+        array = self.return_simplified_array(columns)
+
+        # Get full_path
+        full_path = folder + '/' + filename
+
+        # Save file
+        with open(full_path, 'w') as f:
+            f.write(("#File data originally "
+                     "comes from {0} set\n").format(self.file_origin))
+            f.write(header)
+            np.savetxt(fname     = f,
+                       X         = array,
+                       fmt       = fmt,
+                       delimiter = delimiter,
+                       **kargs)

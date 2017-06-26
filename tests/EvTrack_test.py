@@ -53,7 +53,7 @@ def test_EvTrack_return_simplified_array():
     return array
 
 if __name__ == "__main__":
-    run = raw_input("Run EvTrack.simplify_array test? (y/N): ")
+    run = raw_input("Run EvTrack.return_simplified_array test? (y/N): ")
 
     if run in ('Y', 'y'):
         print "Running EvTrack.simplify_array test"
@@ -176,8 +176,15 @@ def test_EvTrack_simplify_array():
 
     print 'Old track array shape is {0}'.format(track.array.shape)
     print 'Old track dir(): {0}'.format(dir(track))
-    print 'New track array shape is {0}'.format(new_track.array.shape)
+    print 'Old track self.column_index: {0}'.format(track.column_index)
+    print 'Old track self.column_fmt: {0}'.format(track.column_fmt)
+    print 'Old track self.column_names: {0}'.format(track.column_names)
+
+    print '\nNew track array shape is {0}'.format(new_track.array.shape)
     print 'New track dir(): {0}'.format(dir(new_track))
+    print 'New track self.column_index: {0}'.format(new_track.column_index)
+    print 'New track self.column_fmt: {0}'.format(new_track.column_fmt)
+    print 'New track self.column_names: {0}'.format(new_track.column_names)
 
     track.plot('log_Teff', 'log_L', color = 'blue',
                linestyle = '--', zorder = 1)
@@ -206,3 +213,69 @@ if __name__ == '__main__':
     if run in ('Y', 'y'):
         print "Running EvTrack.simplify_array test"
         test_EvTrack_simplify_array()
+
+
+def test_EvTrack_save():
+    track = _initialize_track_for_test()
+
+    # Default save
+    print '\nSaving using default values'
+    t0 = time()
+    track.save()
+    print 'Saving {0} shape array took {1} seconds'.format(track.array.shape,
+                                                           time()-t0)
+
+    # Simplified save in different folder
+    new_columns = ["age", "mass", "log_L", "log_Teff", "log_R", "phase"]
+
+    print '\nSaving in user defined folder and using less columns'
+    t0 = time()
+    track.save(filename = "simplified_track_save_test.dat",
+               folder   = "./",
+               columns  = new_columns)
+    print 'Saving ({0}, {1}) array took {2} seconds'.format(track.Nlines,
+                                                            len(new_columns),
+                                                            time() - t0)
+
+if __name__ == '__main__':
+    run = raw_input("Run EvTrack.save test? (y/N): ")
+
+    if run in ('Y', 'y'):
+        test_EvTrack_save()
+
+
+def test_EvTrack_interpolate_age():
+    track = _initialize_track_for_test()
+
+    track.plot('log_Teff', 'log_L', color='red',
+               linestyle='-', zorder=0)
+
+    # Interpolate track to obtain data for an age, all columns
+    print "\nInterpolating track to obtain data for the given age."
+    t0 = time()
+    age_data0 = track.interpolate_age(age = 1e9)
+    print "Interpolating the track took {0} seconds.\n".format(time()-t0)
+
+    plt.plot(age_data0[3], age_data0[2], 'bo', label = '1e9')
+
+    # Print interpolated column names and values
+    print track.column_names
+    print age_data0
+
+    # Interpolate some more ages and also plot them
+    ages = [2e9, 3e9, 4e9, 5e9, 6e9]
+    fmts = ['go', 'ro', 'ko', 'co', 'yo']
+
+    for fmt, age in zip(fmts, ages):
+        age_data = track.interpolate_age(age = age)
+        plt.plot(age_data[3], age_data[2], fmt, label="{:.1e}".format(age))
+
+    plt.legend()
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == '__main__':
+    run = raw_input("Run EvTrack.interpolate_age test? (y/N): ")
+
+    if run in ('Y', 'y'):
+        test_EvTrack_interpolate_age()

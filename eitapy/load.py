@@ -87,12 +87,24 @@ class LoadedEvolutionaryTrack(object):
         columns = _columns_parsec
         
         self.column_names = []
-        
+        self.column_fmt   = {}
+
         # Loading columns data as attributes
         for col in columns:
             value = ev_track_data[:, col.PARSEC_col_id]
             self.__setattr__(col.name, value)
             self.column_names.append(col.name)
+
+            # Prepare fmt for file saving methods
+            # first try parsec specific fmt, then col fmt
+            # and if none is attributed, use a default value
+            try:
+                self.column_fmt[col.name] = col.PARSEC_col_fmt
+            except AttributeError:
+                try:
+                    self.column_fmt[col.name] = col.fmt
+                except AttributeError:
+                    self.column_fmt[col.name] = "% 9.5f"
 
 ################################################################################
 

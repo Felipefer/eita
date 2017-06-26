@@ -11,7 +11,7 @@ class Ev_track_column(object):
     Contains information about each evolutionary track possible column
     """
     
-    def __init__(self, name, description, unit, log):
+    def __init__(self, name, description, unit, log, fmt = None):
         """
         param        name: column name
         param description: small text description
@@ -23,7 +23,10 @@ class Ev_track_column(object):
         self.description = description
         self.unit = unit
         self.log = log
-    
+
+        if fmt is not None:
+            self.fmt = fmt
+
     def add_PARSEC_info(self, PARSEC_col_name, PARSEC_col_id,
                               PARSEC_col_note = ""):
         
@@ -40,14 +43,21 @@ class Ev_track_column(object):
 # Defining main columns                                                        #
 ################################################################################
 
+# This dictionary is used to provide a way to access the Ev_Track_column object
+# given that the column name is known
+columns = {}
+
 # Should be imported and used as et_col.age
 age = Ev_track_column(name        = "age",
                       description = "age of the star",
                       unit        = "years",
-                      log         = False)
+                      log         = False,
+                      fmt         = "%16.10E")
 
 age.add_PARSEC_info(PARSEC_col_name = "AGE",
                     PARSEC_col_id   = 2)
+
+columns[age.name] = age
 
 ################################################################################
 
@@ -56,53 +66,70 @@ log_age = Ev_track_column(name        = "log_age",
                           unit        = "years",
                           log         = True)
 
+columns[log_age.name] = log_age
+
 #\TODO include way to know these quantities are related
 ################################################################################
 
 initial_mass = Ev_track_column(name        = "initial_mass",
                                description = "initial stellar mass",
                                unit        = "M_sun",
-                               log         = False)
+                               log         = False,
+                               fmt="%7.3f")
+
+columns[initial_mass.name] = initial_mass
 
 ################################################################################
 
 mass = Ev_track_column(name        = "mass",
                        description = "current stellar mass",
                        unit        = "M_sun",
-                       log         = False)
+                       log         = False,
+                       fmt="%9.5f")
 
 mass.add_PARSEC_info(PARSEC_col_name = "MASS",
                      PARSEC_col_id   = 1)
+
+columns[mass.name] = mass
 
 ################################################################################
 
 log_L = Ev_track_column(name        = "log_L",
                         description = "Log bolometric luminosity",
                         unit        = "L_sun",
-                        log         = True)
+                        log         = True,
+                        fmt="% 10.5f")
 
 log_L.add_PARSEC_info(PARSEC_col_name = "LOG_L",
                       PARSEC_col_id   = 3)
+
+columns[log_L.name] = log_L
 
 ################################################################################
 
 log_Teff = Ev_track_column(name        = "log_Teff",
                            description = "Log effective temperature",
                            unit        = "K",
-                           log         = True)
+                           log         = True,
+                           fmt         = "%8.5f")
 
 log_Teff.add_PARSEC_info(PARSEC_col_name = "LOG_TE",
                          PARSEC_col_id   = 4)
+
+columns[log_Teff.name] = log_Teff
 
 ################################################################################
 
 log_R = Ev_track_column(name        = "log_R",
                         description = "Log radius",
                         unit        = "R_sun",
-                        log         = True)
+                        log         = True,
+                        fmt         = "%9.5f")
 
 log_R.add_PARSEC_info(PARSEC_col_name = "LOG_R",
                       PARSEC_col_id   = 5)
+
+# \Todo finish filling columns dict
 
 ################################################################################
 
