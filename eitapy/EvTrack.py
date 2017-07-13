@@ -23,20 +23,25 @@ class EvTrack(object):
     
     """
     
-    def __init__(self, mass, Z, path, file_format = 'PARSEC'):
-        
-        # Check if given file_format is supported in this version of eitapy
-        if file_format not in load.allowed_file_formats:
+    def __init__(self, mass, Z, model = 'Not_Assigned', path = None,
+                 array = None, columns = None):
+
+        # Check if given model is supported in this version of eitapy
+        if model not in load.allowed_models:
             raise ValueError(("{0} is not a supported file format.\n"
                               "Supported formats are {0}."
-                              "").format(load.allowed_file_formats))
+                              "").format(load.allowed_models))
         
         # Load EvTrack according to the file format
         EvTrackData = None
         
-        if file_format == 'PARSEC':
-            EvTrackData = load.LoadedEvolutionaryTrack(mass, Z,
-                                                       path, file_format)
+        if model == 'PARSEC':
+            EvTrackData = load.LoadedEvolutionaryTrack(mass = mass,
+                                                       Z = Z,
+                                                       model = model,
+                                                       path = path,
+                                                       array = array,
+                                                       columns = columns)
         
         # End of loading
         # Check if loading went fine
@@ -49,10 +54,7 @@ class EvTrack(object):
         self.Z    = Z
         self.Y    = EvTrackData.Y
         
-        # Here I change the name from file_format to file_origin because, at
-        # this point, loading should have standardized everything, so the format
-        # is no longer a 'special case'
-        self.file_origin  = file_format
+        self.model        = model
         self.column_names = EvTrackData.column_names
         self.column_fmt   = EvTrackData.column_fmt
 
@@ -280,7 +282,7 @@ class EvTrack(object):
         returns the default filename used by method "save" to create a .dat file
         """
 
-        filename0 = "EvTrack_{0}".format(self.file_origin)
+        filename0 = "EvTrack_{0}".format(self.model)
         filename1 = "_M{:07.3f}_Z{:07.5f}_Y{:07.5f}.dat".format(self.M,
                                                              self.Z,
                                                              self.Y)
@@ -334,7 +336,7 @@ class EvTrack(object):
         # Save file
         with open(full_path, 'w') as f:
             f.write(("#File data originally "
-                     "comes from {0} set\n").format(self.file_origin))
+                     "comes from {0} set\n").format(self.model))
             f.write(header)
             np.savetxt(fname     = f,
                        X         = array,

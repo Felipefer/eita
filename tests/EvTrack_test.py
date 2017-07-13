@@ -3,6 +3,7 @@ sys.path.insert(0, '../eitapy')
 
 import load
 import EvTrack
+import ev_track_columns as etcol
 from time import time
 from matplotlib import pyplot as plt
 import numpy as np
@@ -22,16 +23,16 @@ Tests if EvTracks methods are working correctly
 
 def _initialize_track_for_test(mass=0.950, Z=0.014,
                               path=_parsec_tests_tracks_path,
-                              file_format='PARSEC'):
+                              model='PARSEC'):
 
 
     print "Parameters used for the test:"
-    print "mass: {0} | Z: {1} | file_format: {2}\n".format(mass, Z, file_format)
+    print "mass: {0} | Z: {1} | model: {2}\n".format(mass, Z, model)
 
     print "Initializing EvTrack"
     t0 = time()
     track = EvTrack.EvTrack(mass=mass, Z=Z,
-                            path=path, file_format=file_format)
+                            path=path, model=model)
     print "Initializing took {0} seconds".format(time() - t0)
 
     return track
@@ -63,6 +64,47 @@ if __name__ == "__main__":
         plt.plot(array[:,3], array[:,2])
         plt.gca().invert_xaxis()
         plt.show()
+
+def test_create_EvTrack_from_array():
+    """
+    Tests the Method LoadedEvolutionaryTrack._load_from_array
+    """
+    mass = 0.950
+    Z = 0.014
+    model = "PARSEC"
+    path = _parsec_tests_tracks_path
+
+    track = _initialize_track_for_test(mass=mass,
+                                       Z=Z,
+                                       path=path,
+                                       model=model)
+
+    print "Getting simplified array"
+    t0 = time()
+    columns = ["age", "mass", "log_L", "log_Teff", "log_R", "phase"]
+
+    array = track.return_simplified_array(columns)
+    print "Simplifying the array took {0} seconds\n".format(time() - t0)
+
+    track_from_array = EvTrack.EvTrack(mass=mass, Z=Z, model="PARSEC",
+                                       array = array, columns = columns)
+
+    print "print: {0}".format(track_from_array)
+    print "dir: {0}".format(dir(track_from_array))
+    print "array: {0}".format(track_from_array.array)
+    print "column_names: {0}".format(track_from_array.column_names)
+
+    plt.plot(track_from_array.array[:, 3],
+             track_from_array.array[:, 2])
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input("Run create_EvTrack_from_array test? (y/N): ")
+
+    if run in ('Y', 'y'):
+        print "Running LoadedEvolutionaryTrack._load_from_array test"
+        test_create_EvTrack_from_array()
 
 
 def test_EvTrack_plot():

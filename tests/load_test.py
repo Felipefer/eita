@@ -20,16 +20,16 @@ def test_load_of_PARSEC_track():
     mass = 0.950
     Z    = 0.014
     
-    file_format = 'PARSEC'
+    model = 'PARSEC'
     
     print "Parameters used for the test:"
-    print "mass: {0} | Z: {1} | file_format: {2}\n".format(mass, Z, file_format)
+    print "mass: {0} | Z: {1} | model: {2}\n".format(mass, Z, model)
 
     print "Setting up and loading ev_track"
     ev_track = load.LoadedEvolutionaryTrack(mass = mass,
                                             Z = Z,
                                             path = path,
-                                            file_format = file_format)
+                                            model = model)
     
     return ev_track
 
@@ -54,15 +54,15 @@ def test_init_EvTrack():
     mass = 0.950
     Z = 0.014
     
-    file_format = 'PARSEC'
+    model = 'PARSEC'
     
     print "Parameters used for the test:"
-    print "mass: {0} | Z: {1} | file_format: {2}\n".format(mass, Z, file_format)
+    print "mass: {0} | Z: {1} | model: {2}\n".format(mass, Z, model)
     
     print "Initializing EvTrack"
     t0 = time()
     track = EvTrack.EvTrack(mass = mass, Z = Z,
-                            path = path, file_format = file_format)
+                            path = path, model = model)
     print "Initializing took {0} seconds".format(time()-t0)
 
     return track
