@@ -343,3 +343,125 @@ class EvTrack(object):
                        fmt       = fmt,
                        delimiter = delimiter,
                        **kargs)
+
+class EvTrack_setM(object):
+    #\TODO expand this docstring
+    """
+
+    """
+
+    def __init__(self, Z = None, M = None, phase = None,
+                 model = None, array = None, columns = None):
+
+        # Check if given model is supported in this version of eitapy
+        if model is None:
+            model = 'Not_Assigned'
+
+        elif model not in load.allowed_models:
+            raise ValueError(("{0} is not a supported file format.\n"
+                              "Supported formats are {1}."
+                              "").format(model, load.allowed_models))
+
+        # Assign empty list as default value for M
+        if M is None:
+            self.M = []
+        else:
+            self.M = M
+
+        self.phase = phase
+        self.columns = columns
+        self.Z = Z
+
+        # If Z is provided, calculate Y
+        if self.Z is not None:
+            self.Y = utils.abundanceY(Z)
+
+        self.model = model
+
+        # Initialize self.array
+        self.array = array
+
+        # if array is None, initialize array using the shape described by len of
+        # M, phase and columns
+        if self.array is None:
+            if self.phase is not None:
+                if self.columns is not None:
+                    self._initialize_array()
+
+
+    def _initialize_array(self):
+        """
+        Initialize the data array with the shape defined by the number of masses
+        in the set, number of phases in each EvTrack and the number of columns
+        in each EvTrack
+
+        Assigns self.array or raises an error telling what went wrong
+        """
+
+        if self.array is not None:
+            raise ValueError("self.array is already initialized")
+
+        else:
+
+            if self.phase is not None:
+
+                if self.columns is not None:
+                    # array shape sizes
+                    d1 = len(self.M)
+                    d2 = len(self.phase)
+                    d3 = len(self.columns)
+
+                    self.array = np.empty((d1, d2, d3))
+                    self.array[:] = np.nan
+
+                else:
+                    raise ValueError(("Can't initialize array if self.columns"
+                                      "is None"))
+
+            else:
+                raise ValueError("Can't initialize array if self.phase is None")
+
+    def add_track(self, evtrack):
+        """
+        add new evtrack to the data in the EvTrack_setM
+        """
+
+        # Attribute the EvTrack metallicity to the set if none has been assigned
+        if self.Z is None:
+            self.Z = evtrack.Z
+            self.Y = utils.abundanceY(self.Z)
+
+        # Attribute the EvTrack stage if the set stages are not assigned yet
+        if self.phase is None:
+            self.phase = evtrack.phase
+
+        # Check if Set and EvTrack metallicities are the same
+        if self.Z != evtrack.Z:
+            raise ValueError(("EvTrack metallicity does not correspond to the"
+                              "metallicity of the set and can not be addad."))
+
+        # Find the index of the mass to be added in self.mass
+        new_mass_id = get_new_mass_index(mass_list = self.M,
+                                         new_mass = evtrack.M)
+
+
+
+
+def get_new_mass_index(mass_list, new_mass):
+    """
+    returns the index the newly added "new_mass" has in the ordered mass_list
+    """
+
+    # Make a copy of the mass_list so it doesn't get eddited by this function
+    new_mass_list = copy.deepcopy(mass_list)
+
+    # Add the new_mass to the list
+    new_mass_list.append(new_mass)
+
+    # Sort the list
+    new_mass_list.sort()
+
+    # Get the index of the new_mass in the updated list
+    index = new_mass_list.index(new_mass)
+
+    return index
