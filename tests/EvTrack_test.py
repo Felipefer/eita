@@ -286,7 +286,7 @@ if __name__ == '__main__':
         test_EvTrack_save()
 
 
-def test_EvTrack_interpolate_age():
+def test_EvTrack_interp_age():
     track = _initialize_track_for_test()
 
     track.plot('log_Teff', 'log_L', color='red',
@@ -295,7 +295,7 @@ def test_EvTrack_interpolate_age():
     # Interpolate track to obtain data for an age, all columns
     print "\nInterpolating track to obtain data for the given age."
     t0 = time()
-    age_data0 = track.interpolate_age(age = 1e9)
+    age_data0 = track.interp_age(age = 1e9)
     print "Interpolating the track took {0} seconds.\n".format(time()-t0)
 
     plt.plot(age_data0[3], age_data0[2], 'bo', label = '1e9')
@@ -309,7 +309,7 @@ def test_EvTrack_interpolate_age():
     fmts = ['go', 'ro', 'ko', 'co', 'yo']
 
     for fmt, age in zip(fmts, ages):
-        age_data = track.interpolate_age(age = age)
+        age_data = track.interp_age(age = age)
         plt.plot(age_data[3], age_data[2], fmt, label="{:.1e}".format(age))
 
     plt.legend()
@@ -317,10 +317,10 @@ def test_EvTrack_interpolate_age():
     plt.show()
 
 if __name__ == '__main__':
-    run = raw_input("Run EvTrack.interpolate_age test? (y/N): ")
+    run = raw_input("Run EvTrack.interp_age test? (y/N): ")
 
     if run in ('Y', 'y'):
-        test_EvTrack_interpolate_age()
+        test_EvTrack_interp_age()
 
 def test_EvTrack_setM_init():
     Z = 0.14

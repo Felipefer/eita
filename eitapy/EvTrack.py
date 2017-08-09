@@ -243,7 +243,7 @@ class EvTrack(object):
             # Update attributes
             self._update_colname_attributes()
 
-    def interpolate_age(self, age, columns = None, **kargs):
+    def interp_age(self, age, columns = None, **kargs):
         """
         returns interpolated data array for a given age
 
