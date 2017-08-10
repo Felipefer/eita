@@ -17,6 +17,10 @@ import config
 import utils
 import load
 
+default_interp_phase = {}
+#\TODO review this value. Used this only for testing
+default_interp_phase['PARSEC'] = np.linspace(0, 10, 0.01)
+
 class EvTrack(object):
     #\TODO expand this docstring
     """
@@ -343,6 +347,229 @@ class EvTrack(object):
                        fmt       = fmt,
                        delimiter = delimiter,
                        **kargs)
+
+class EvTrack_MassSet(object):
+    #\TODO expand this docstring
+    """
+
+    """
+
+    def __init__(self, EvTrack_list = None, Z = None, M = None, phase = None,
+                 model = None, path = None, array = None, columns = None):
+        """
+        Initializes the EvTrack_MassSet. There are three possible ways to load
+        EvTrack_MassSet. 1) By giving a list of EvTrack objects of same
+        composition and different masses. 2) By loading data from a file,
+        specified by Z, M list, model and path. 3) By explicitly providing the
+        whole data Z, M list, model, array, columns
+
+        :param EvTrack_list: list of EvTrack objects.
+        :param Z: float. Metal fraction composition.
+        :param M: list of floats. List of masses contained in the set
+        :param phase: list of floats. The phases for which data is (or will be)
+                      available. If not provided, the default procedure is:
+                      1) Try to use the phases from the first provided EvTrack
+                      in the EvTrack_list. 2) Try to obtain phases from the
+                      array, provided it is one of the columns. 3) Try to use
+                      the default phases for the given model.
+        :param model: string. Specifies the model from which the data comes from
+        :param array: np.array. Used only when explicitly providing the data.
+                      The shape of the array must be (number_of_masses,
+                      number_of_phases, number_of_columns)
+        :param columns: list of strings or etcol.Ev_track_column objects.
+                        used when explicitly providing the data to describe the
+                        array or when the user desires to simplify the original
+                        data to contain only the wanted columns.
+        """
+
+        ########################################################################
+        # Perform some tests to check if all necessary data is provided
+
+        # Check the method used to load the data
+        self.EvTrack_list_is_provided = False
+        self.array_is_provided = False
+        self.load_info_is_provided = False
+
+        # This will update the above booleans
+        self._check_if_all_needed_info_is_given(EvTrack_list=EvTrack_list,
+                                                Z=Z, M=M, phase=phase,
+                                                model=model, path=path,
+                                                array=array, columns=columns)
+
+        if not any([self.EvTrack_list_is_provided,
+                    self.array_is_provided,
+                    self.load_info_is_provided]):
+
+            raise ValueError("Not enought information was provided to load the"
+                             "evolutionary set from any of the three possible"
+                             "methods (from EvTracks list, explicitly from "
+                             "data array, or load from files. Check the "
+                             "documentation to see how to load data from any of"
+                             " these methods.")
+
+        # Deal with the model parameter
+        if model is not None:
+            if model not in load.allowed_models:
+                raise ValueError(("{0} is not a supported model.\n"
+                                  "Supported models are {1}."
+                                  "").format(model, load.allowed_models))
+            else:
+                self.model = model
+        else:
+            self.model = "Not_Assigned"
+        ########################################################################
+
+        # Initialize EvTrack set according to the method chosen by the user's
+        # parameters entries.
+
+        self.phase = None
+        self._prepare_phase_parameter(EvTrack_list = EvTrack_list,
+                                      phase = phase, path = path,
+                                      array = array, columns = columns)
+
+        if self.EvTrack_list_is_provided:
+            pass
+
+        if self.load_info_is_provided:
+            pass
+
+        if self.array_is_provided:
+            pass
+
+    def _prepare_phase_parameter(self, EvTrack_list = None, phase = None,
+                                 path = None, array = None, columns = None):
+        """
+        Used internally to set which values will be used for phase if it is not
+        provided by the user.
+        """
+
+        if phase is not None:
+            if utils.isiterable(phase):
+                self.phase = phase
+            else:
+                raise ValueError("Phase parameter must be iterable.")
+
+        else:
+            if self.EvTrack_list_is_provided:
+                # Try to get the phases from the first object in the list
+                try:
+                    self.phase = EvTrack_list[0].phase
+
+                except:
+                    try:
+                        # Try to get default model phases
+                        self.phase = default_interp_phase[self.model]
+
+                    except:
+                        raise ValueError("Could not assign phase attribute.")
+
+            if self.array_is_provided:
+                # Try to get the phases from the first object in the array
+                try:
+                    self.phase = array[0, :, columns == 'phase']
+
+                except:
+                    try:
+                        # Try to get default model phases
+                        self.phase = default_interp_phase[self.model]
+
+                    except:
+                        raise ValueError("Could not assign phase attribute.")
+
+            if self.load_info_is_provided:
+                try:
+                    # \TODO if loading from file, get phase from first file
+                    forceerror
+                except:
+                    try:
+                        # Try to get default model phases
+                        self.phase = default_interp_phase[self.model]
+
+                    except:
+                        raise ValueError("Could not assign phase attribute.")
+
+    def _check_if_all_needed_info_is_given(self, EvTrack_list = None,
+                                           Z = None, M = None, phase = None,
+                                           model = None, path = None,
+                                           array = None, columns = None):
+
+        """
+        Used internally to check if the user provided all the necessary data to
+        initialize the array from any of the given methods.
+        """
+
+        EvTrack_list_is_provided = False
+        array_is_provided = False
+        load_info_is_provided = False
+
+        # Check if EvTrack_list is provided and if it is a list
+        if EvTrack_list is not None:
+            if utils.isiterable(EvTrack_list):
+                EvTrack_list_is_provided = True
+            else:
+                raise ValueError("if provided, EvTrack_list must be a list of"
+                                 "EvTrack objects")
+
+        # If EvTrack_list is provided, check if unecessary data was
+        # also given by the user:
+        if EvTrack_list_is_provided:
+            param_dict = {'Z': Z, 'M': M, 'model': model, 'path': path,
+                          'array': array}
+            for param in param_dict.keys():
+                if param_dict[param] is not None:
+                    raise ValueError(("When providing EvTrack_list, it is not "
+                                      "necessary to also provide the parameter "
+                                      "{0}, which may cause conflicts during "
+                                      "evaluation.").format(param))
+
+        # Check if array is provided, meaning data will be given explicitly
+        if array is not None:
+            array_is_provided = True
+
+        # If array is provided, check if the other necessary information is also
+        # provided.
+        if array_is_provided:
+            param_dict = {'Z': Z, 'M': M, 'model': model, 'columns': columns}
+
+            for param in param_dict.keys():
+                if param_dict[param] is None:
+                    raise ValueError(("When explicitly providing the data, "
+                                      "parameter {0} must be assigned"
+                                      ".").format(param))
+
+        # Check if array's shape agrees with the other given information
+        if array_is_provided:
+            if array.shape[0] != len(M):
+                raise ValueError(("The number of provided masses in list M "
+                                  "({0}) does not agree with the size of the "
+                                  "dimension 0 of the given array ({1})"
+                                  ".").format(len(M), array.shape[0]))
+
+            if array.shape[2] != len(columns):
+                raise ValueError(("The number of provided columns "
+                                  "({0}) does not agree with the size of the "
+                                  "dimension 2 of the given array ({1})"
+                                  ".").format(len(columns), array.shape[2]))
+
+        # If neither array, nor EvTrack objects are provided, check if all the
+        # information to load from a file is provided
+        if not any([EvTrack_list_is_provided, array_is_provided]):
+            param_dict = {'Z': Z, 'M': M, 'model': model, 'path': path}
+
+            for param in param_dict.keys():
+                if param_dict[param] is None:
+                    raise ValueError(("When loading data from files, "
+                                      "parameter {0} must be assigned"
+                                      ".").format(param))
+
+            # If it gets here
+            load_info_is_provided = True
+
+        self.EvTrack_list_is_provided = EvTrack_list_is_provided
+        self.array_is_provided = array_is_provided
+        self.load_info_is_provided = load_info_is_provided
+
+        ########################################################################
 
 class EvTrack_setM(object):
     #\TODO expand this docstring
