@@ -422,22 +422,119 @@ class EvTrack_MassSet(object):
         # Initialize EvTrack set according to the method chosen by the user's
         # parameters entries.
 
-        self.phase = None
-        self._prepare_phase_parameter(EvTrack_list = EvTrack_list,
-                                      phase = phase, path = path,
-                                      array = array, columns = columns)
+        # Set attributes depending on initialization kind (all but array)
+
+        self.phase = None # Will be set by self._prepare_phase_parameter
 
         if self.EvTrack_list_is_provided:
-            pass
 
-        if self.load_info_is_provided:
-            pass
+            # Get reference EvTrack
+            refEvTrack = EvTrack_list[0]
 
+            # self.Z is given by the reference object
+            self.Z = refEvTrack.Z
+            self.Y = refEvTrack.Y
+
+            # self.M is a list containing the initial mass of each track
+            self.M = []
+            for evtrack_obj in EvTrack_list:
+                self.M.append(evtrack_obj.M)
+
+            # self.model is given by the reference object
+            self.model = refEvTrack.model
+
+            # if columns is None, get it from reference object
+            if columns is None:
+                self.columns = refEvTrack.column_names
+            else:
+                self.columns = columns
+
+            # phase is given by entry parameter, or taken from reference, or
+            # taken from default value for model.
+            self._prepare_phase_parameter(refEvTrack=refEvTrack,
+                                          phase=phase, array=array,
+                                          columns=columns) # Sets self.phase
+
+
+        elif self.load_info_is_provided:
+
+            # Get reference EvTrack
+            refEvTrack = EvTrack(mass=M[0], Z=Z, path=path, model=model)
+
+            # self.Z is given by entry parameter
+            self.Z = Z
+            self.Y = utils.abundanceY(Z)
+
+            # self.M is given by entry parameter
+            self.M = M
+
+            # self.model is given by entry parameter
+            self.model = model
+
+            # phase is given by entry parameter, or taken from reference, or
+            # taken from default value for model.
+            self._prepare_phase_parameter(refEvTrack=refEvTrack,
+                                          phase=phase, array=array,
+                                          columns=columns)  # Sets self.phase
+
+            # if columns is None, get it from reference object
+            if columns is None:
+                self.columns = refEvTrack.column_names
+            else:
+                self.columns = columns
+
+
+        elif self.array_is_provided:
+            # self.Z is given by entry parameter
+            self.Z = Z
+            self.Y = utils.abundanceY(Z)
+
+            # self.M is given by entry parameter
+            self.M = M
+
+            # self.model is given by entry parameter
+            self.model = model
+
+            # phase is given by entry parameter, or taken from reference, or
+            # taken from default value for model.
+            self._prepare_phase_parameter(refEvTrack=None,
+                                          phase=phase, array=array,
+                                          columns=columns)  # Sets self.phase
+
+        # Set up the array
         if self.array_is_provided:
-            pass
+            self.array = array
 
-    def _prepare_phase_parameter(self, EvTrack_list = None, phase = None,
-                                 path = None, array = None, columns = None):
+        # for the "EvTrack_list" and "load from file" cases:
+        else:
+            # Generate an empty array
+            self.array = np.empty((len(self.M),
+                                   len(self.phase),
+                                   len(self.columns)))
+            self.array[:] = np.nan
+
+            # Now, fill the array
+            for i in range(len(self.M)):
+
+                # Get EvTrack for this step
+                if self.EvTrack_list_is_provided:
+                    EvTrack_obj = EvTrack_list[i]
+                elif self.load_info_is_provided:
+                    EvTrack_obj = EvTrack(mass=M[i], Z=Z,
+                                          path=path, model=model)
+
+                # Interpolate phases
+                EvTrack_obj.interp_phase(phase = self.phase,
+                                         return_EvTrack = False)
+
+                # Simplify the array
+                EvTrack_obj.simplify_array(columns=self.columns,
+                                           return_EvTrack=False)
+
+                self.array[i, :, :] = EvTrack_obj.array
+
+    def _prepare_phase_parameter(self, refEvTrack = None, phase = None,
+                                 array = None, columns = None):
         """
         Used internally to set which values will be used for phase if it is not
         provided by the user.
@@ -453,7 +550,7 @@ class EvTrack_MassSet(object):
             if self.EvTrack_list_is_provided:
                 # Try to get the phases from the first object in the list
                 try:
-                    self.phase = EvTrack_list[0].phase
+                    self.phase = refEvTrack.phase
 
                 except:
                     try:
@@ -463,7 +560,7 @@ class EvTrack_MassSet(object):
                     except:
                         raise ValueError("Could not assign phase attribute.")
 
-            if self.array_is_provided:
+            elif self.array_is_provided:
                 # Try to get the phases from the first object in the array
                 try:
                     self.phase = array[0, :, columns == 'phase']
@@ -476,10 +573,9 @@ class EvTrack_MassSet(object):
                     except:
                         raise ValueError("Could not assign phase attribute.")
 
-            if self.load_info_is_provided:
+            elif self.load_info_is_provided:
                 try:
-                    # \TODO if loading from file, get phase from first file
-                    forceerror
+                    self.phase = refEvTrack.phase
                 except:
                     try:
                         # Try to get default model phases
