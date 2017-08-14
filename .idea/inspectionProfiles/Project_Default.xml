@@ -23,6 +23,7 @@
         <list>
           <option value="load" />
           <option value="EvTrack" />
+          <option value="ev_track_columns" />
         </list>
       </option>
     </inspection_tool>

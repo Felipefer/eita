@@ -495,6 +495,9 @@ class EvTrack_MassSet(object):
             # self.model is given by entry parameter
             self.model = model
 
+            # self.columns is given by entry parameter
+            self.columns = columns
+
             # phase is given by entry parameter, or taken from reference, or
             # taken from default value for model.
             self._prepare_phase_parameter(refEvTrack=None,
