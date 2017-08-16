@@ -279,7 +279,6 @@ class EvTrack(object):
         age_array_line = array_interp_function(age)
 
         return age_array_line
-    
 
     def default_save_filename(self):
         """
@@ -347,6 +346,54 @@ class EvTrack(object):
                        fmt       = fmt,
                        delimiter = delimiter,
                        **kargs)
+
+    def __add__(self, evtrack):
+        """
+        Adds data from two EvTracks of same initial mass and composition. This
+        is used mostly when data from two different evolutionary phases are
+        stored in different files.
+        """
+
+        # Perform a few tests to see if this addition is possible ##############
+        if self.M != evtrack.M:
+            raise ValueError(("You can only concatenate data from evolutionary "
+                              "tracks of the same initial mass"))
+
+        if self.Z != evtrack.Z:
+            raise ValueError(("You can only concatenate data from evolutionary "
+                              "tracks of the same initial composition"))
+
+        if self.column_names != evtrack.column_names:
+            raise ValueError(("The columns of the data you are trying to"
+                              "concatenate, does not match."))
+        ########################################################################
+
+        # Remove nan values from evtrack data
+        evtrack.array = evtrack.array[~np.isnan(evtrack.phase), :]
+        evtrack.phase = evtrack.phase[~np.isnan(evtrack.phase)]
+
+        # Remove from self the phase interval that contains both self and
+        # evtrack data
+        remove_common_phases_from_self = ((self.phase < evtrack.phase.min()) &
+                                          (self.phase > evtrack.phase.max()))
+
+        phase0 = self.phase[remove_common_phases_from_self]
+        array0 = self.array[remove_common_phases_from_self]
+
+        # Concatenate both data
+        phase = np.concatenate((phase0, evtrack.phase))
+        array = np.concatenate((array0, evtrack.array))
+
+        # Order the data
+        argsort = phase.argsort()
+        array = array[argsort, :]
+
+        # Update self data
+        self.array = array
+        self._update_colname_attributes()
+
+        return self
+
 
 class EvTrack_MassSet(object):
     #\TODO expand this docstring
@@ -536,6 +583,99 @@ class EvTrack_MassSet(object):
 
                 self.array[i, :, :] = EvTrack_obj.array
 
+    def __getitem__(self, i):
+        """
+        self.__getitem__ returns the EvTrack object which has mass self.M[i]
+        """
+
+        # Create EvTrack object from array data
+
+        evtrack_i = EvTrack(mass = self.M[i],
+                            Z = self.Z,
+                            model = self.model,
+                            array = self.array[i, :, :],
+                            columns = self.columns)
+
+        return evtrack_i
+
+    def __iter__(self):
+        """
+        Iterates the set returning one EvTrack at a time
+        """
+
+        for i in range(len(self.M)):
+            # Create EvTrack object from array data
+            evtrack_i = EvTrack(mass=self.M[i],
+                                Z=self.Z,
+                                model=self.model,
+                                array=self.array[i, :, :],
+                                columns=self.columns)
+
+            yield evtrack_i
+
+    def interp_mass(self, M, new_object = False, **kargs):
+        """
+        Interpolates the evolutionary track set for the given list of masses M
+
+        :param M: list of masses to interpolate
+
+        also accepts any keyword argument for the function interp1d from the
+        scipy.interpolate module
+        """
+
+        # If a new EvTrack Set is to be created, copy, evaluate and return it
+        if new_object:
+            new_set = copy.deepcopy(self)
+            new_set.interp_mass(M=M, new_object = False, **kargs)
+
+            return new_set
+
+        # Otherwise, only evaluate
+        else:
+            # Create the interpolation function
+            interp_function = interp1d(x=self.M,
+                                       y=self.array,
+                                       axis=0,
+                                       **kargs)
+
+            self.array = interp_function(M)
+            self.M = M
+
+    def plot(self, xcol, ycol, M = None, **kargs):
+
+        """
+        """
+
+        if M is None:
+            M = self.M
+
+        # If M given is different from self.M, interpolation is needed. Here
+        # I will interpolate while creating a new object Set, and run the method
+        # for the interpolated one.
+        if list(M) != list(self.M):
+            new_Set = self.interp_mass(M = M, new_object = True)
+
+            # In this case, by definition M will be equal to new_Set.M, and
+            # interpolation will not be necessary
+            new_Set.plot(xcol = xcol, ycol = ycol, M = M, **kargs)
+
+        # If M list given is the same as self.M, interpolation is not needed.
+        else:
+            for track in self:
+                track.plot(xcol, ycol, **kargs)
+
+    def __add__(self, evtrack):
+        #\TODO implement
+        """
+        adds new data to self.array from an evtrack object provided it is from
+        the same model, has the same composition and covers the same columns.
+
+        the phases in evtrack.phase will be interpolated for its data to
+        correspond to self.phase
+        """
+
+
+
     def _prepare_phase_parameter(self, refEvTrack = None, phase = None,
                                  array = None, columns = None):
         """
@@ -670,6 +810,10 @@ class EvTrack_MassSet(object):
 
         ########################################################################
 
+    def save(self):
+        # \TODO implement
+        pass
+
 class EvTrack_setM(object):
     #\TODO expand this docstring
     """
@@ -769,9 +913,6 @@ class EvTrack_setM(object):
         # Find the index of the mass to be added in self.mass
         new_mass_id = get_new_mass_index(mass_list = self.M,
                                          new_mass = evtrack.M)
-
-
-
 
 def get_new_mass_index(mass_list, new_mass):
     """
