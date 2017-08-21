@@ -583,6 +583,10 @@ class EvTrack_MassSet(object):
 
                 self.array[i, :, :] = EvTrack_obj.array
 
+        # Set the array containing the age of the beginning of each phase for
+        # each mass
+        self._set_array_age_beginning_phase()
+
     def __getitem__(self, i):
         """
         self.__getitem__ returns the EvTrack object which has mass self.M[i]
@@ -674,6 +678,56 @@ class EvTrack_MassSet(object):
         correspond to self.phase
         """
 
+    def _set_array_age_beginning_phase(self):
+        """
+        Used internally to create the array that contains the age of the
+        beginning of each phase (columns) for each mass in the set (rows).
+        """
+
+        # Get possible stages
+        phases = np.array(list(set(np.around(self.phase))), dtype=int)
+
+        # Set array that will contain the data
+        age_beginning_phase = np.empty((len(self.M), len(phases)))
+        age_beginning_phase[:] = np.nan
+
+        for i in range(len(self.M)):
+            track = self[i]
+
+            # \todo change this so it works even if the column given is not
+            #  exactly the age (e.g. self.LogAge)
+
+            age_beginning_phase_i_fun = interp1d(x = track.phase,
+                                                 y = track.age,
+                                                 bounds_error=False)
+
+            age_beginning_phase[i,:] = age_beginning_phase_i_fun(phases)
+
+        self.age_beg_phase = age_beginning_phase
+
+    def get_isochrone_masses(self, t, N = 5000):
+        """
+
+        """
+        # Get possible stages
+        phases = np.array(list(set(np.around(self.phase))), dtype=int)
+
+        # Determine the mass of the beginning of each stage
+        beg_mass = []
+        for i in range(len(phases)):
+            # Make the interpolation between age of the beginning of the stage
+            # and mass
+            x = self.age_beg_phase[:, i]
+            y = self.M
+
+            interp_fun = interp1d(x = x,
+                                  y = y,
+                                  bounds_error=False)
+
+            # Include in the mass list the mass corresponding to this age
+            beg_mass.append(interp_fun(t))
+
+        return beg_mass
 
 
     def _prepare_phase_parameter(self, refEvTrack = None, phase = None,

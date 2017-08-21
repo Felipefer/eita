@@ -277,3 +277,27 @@ if __name__ == "__main__":
 
     if run in ('Y', 'y'):
         test_EvTrack_MassSet_plot_with_interp()
+
+
+def test_EvTrack_MassSet_array_age_beg_phase():
+    Z = 0.017
+    M = [0.950, 1.000, 1.050]
+
+    model = "PARSEC"
+    path = _parsec_tests_tracks_path
+
+    Set = EvTrack.EvTrack_MassSet(Z=Z, M=M, model=model, path=path)
+
+    print Set.age_beg_phase
+    for i in range(Set.age_beg_phase.shape[1]):
+        plt.plot(Set.age_beg_phase[:,i],
+                 Set.M)
+
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_MassSet_array_age_beg_phase() "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_MassSet_array_age_beg_phase()
