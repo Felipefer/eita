@@ -727,6 +727,13 @@ class EvTrack_MassSet(object):
             # Include in the mass list the mass corresponding to this age
             beg_mass.append(interp_fun(t))
 
+        # Number of points by stage
+        Ni = int(N/len(phases))
+        Ni = np.array([Ni]*len(phases))
+
+        # Add round-off points to first stage
+        Ni[0] = Ni[0] + (N-Ni.sum())
+
         return beg_mass
 
 

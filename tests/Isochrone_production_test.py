@@ -39,6 +39,7 @@ for i in range(Set.age_beg_phase.shape[1]):
     plt.plot(Set.age_beg_phase[:, i],
              Set.M)
 
+plt.plot(np.array((0, 100)), np.array((1e9, 1e9)), '--k')
 plt.show()
 
 isochrone_masses = Set.get_isochrone_masses(t = 1e9)
