@@ -470,7 +470,6 @@ class EvTrack_MassSet(object):
         # parameters entries.
 
         # Set attributes depending on initialization kind (all but array)
-
         self.phase = None # Will be set by self._prepare_phase_parameter
 
         if self.EvTrack_list_is_provided:
@@ -551,9 +550,17 @@ class EvTrack_MassSet(object):
                                           phase=phase, array=array,
                                           columns=columns)  # Sets self.phase
 
+        # Fix for the case of the Set containing only one mass
+        if not utils.isiterable(self.M):
+            self.M = [self.M]
+
         # Set up the array
         if self.array_is_provided:
-            self.array = array
+            if len(self.M) == 1:
+                self.array = np.empty((1, array.shape[0], array.shape[1]))
+                self.array[0, :, :] = array
+            else:
+                self.array = array
 
         # for the "EvTrack_list" and "load from file" cases:
         else:
@@ -583,21 +590,36 @@ class EvTrack_MassSet(object):
 
                 self.array[i, :, :] = EvTrack_obj.array
 
+
+        # Set an integer list describing the phases present in the set
+        self.phases = np.array(list(set(np.around(self.phase))), dtype=int)
+
         # Set the array containing the age of the beginning of each phase for
         # each mass
         self._set_array_age_beginning_phase()
+        self._interp_mass_function = None
 
     def __getitem__(self, i):
         """
         self.__getitem__ returns the EvTrack object which has mass self.M[i]
         """
 
-        # Create EvTrack object from array data
+        # Had to do it to fix problems when len(self.M) == 1: ##################
+        if len(self.array.shape) == 2:
+            array = np.empty((1, self.array.shape[0], self.array.shape[1]))
+            array[0, :, :] = self.array
+
+        else:
+            array = self.array[i, :, :]
+
+        if not utils.isiterable(self.M):
+            self.M = [self.M]
+        ########################################################################
 
         evtrack_i = EvTrack(mass = self.M[i],
                             Z = self.Z,
                             model = self.model,
-                            array = self.array[i, :, :],
+                            array = array,
                             columns = self.columns)
 
         return evtrack_i
@@ -617,7 +639,8 @@ class EvTrack_MassSet(object):
 
             yield evtrack_i
 
-    def interp_mass(self, M, new_object = False, **kargs):
+    def interp_mass(self, M = None, new_object = False,
+                    record_interp_function = True, **kargs):
         """
         Interpolates the evolutionary track set for the given list of masses M
 
@@ -636,14 +659,25 @@ class EvTrack_MassSet(object):
 
         # Otherwise, only evaluate
         else:
-            # Create the interpolation function
-            interp_function = interp1d(x=self.M,
-                                       y=self.array,
-                                       axis=0,
-                                       **kargs)
+            # If interpolation function is recorded, use it.
+            if self._interp_mass_function is not None:
+                if M is not None:
+                    self.array = self._interp_mass_function(M)
+                    self.M = M
 
-            self.array = interp_function(M)
-            self.M = M
+            else:
+                # Create the interpolation function
+                interp_function = interp1d(x=self.M,
+                                           y=self.array,
+                                           axis=0,
+                                           **kargs)
+
+                if M is not None:
+                    self.array = interp_function(M)
+                    self.M = M
+
+                if record_interp_function:
+                    self._interp_mass_function = interp_function
 
     def plot(self, xcol, ycol, M = None, **kargs):
 
@@ -685,7 +719,7 @@ class EvTrack_MassSet(object):
         """
 
         # Get possible stages
-        phases = np.array(list(set(np.around(self.phase))), dtype=int)
+        phases = self.phases
 
         # Set array that will contain the data
         age_beginning_phase = np.empty((len(self.M), len(phases)))
@@ -705,7 +739,32 @@ class EvTrack_MassSet(object):
 
         self.age_beg_phase = age_beginning_phase
 
-    def get_isochrone_masses(self, t, N = 5000):
+    def make_isochrone(self, age, N = 5000, isoc_columns = None):
+        """
+        Generates an isochrone of given age sampled by N points
+        """
+
+        # Set up columns parameter
+        if isoc_columns is None:
+            isoc_columns = self.columns
+
+        isoc_masses = self.get_isochrone_masses(age=age, N=N)
+
+        #Setup isochrone interpolation
+        self.interp_mass(M=None, new_object=True)
+
+        # Generate isochrone array
+        isoc_array = np.empty((N, len(isoc_columns)))
+        isoc_array[:] = np.nan
+
+        for i in range(N):
+            track_temp = self.interp_mass(M = isoc_masses[i],
+                                          new_object=True)[0]
+            isoc_array[i,:] = track_temp.interp_age(age=age)
+
+        return isoc_columns
+
+    def get_isochrone_masses(self, age, N = 5000):
         """
 
         """
@@ -725,17 +784,32 @@ class EvTrack_MassSet(object):
                                   bounds_error=False)
 
             # Include in the mass list the mass corresponding to this age
-            beg_mass.append(interp_fun(t))
+            beg_mass.append(interp_fun(age))
 
-        # Number of points by stage
+        beg_mass = np.array(beg_mass)
+
+        # Remove the phases not covered by any mass in the Set
+        phases = phases[~np.isnan(beg_mass)]
+
+        # Remove nan's from beg_mass
+        beg_mass = beg_mass[~np.isnan(beg_mass)]
+
+        # Number of points by phase
         Ni = int(N/len(phases))
         Ni = np.array([Ni]*len(phases))
 
-        # Add round-off points to first stage
+        # Add round-off points to first phase
         Ni[0] = Ni[0] + (N-Ni.sum())
 
-        return beg_mass
+        # Create array with isochrone
+        isoc_mass = np.linspace(self.M[0], beg_mass[0], Ni[0])
 
+        for i in range(1, len(phases)):
+            isoc_mass = np.concatenate((isoc_mass,
+                                        np.linspace(beg_mass[i-1],
+                                                    beg_mass[i],
+                                                    Ni[i])))
+        return isoc_mass
 
     def _prepare_phase_parameter(self, refEvTrack = None, phase = None,
                                  array = None, columns = None):

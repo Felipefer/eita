@@ -33,14 +33,14 @@ t0 = time()
 Set = EvTrack.EvTrack_MassSet(Z=Z, M=M, model=model, path=path)
 print "Loading took {0} seconds.".format(time() - t0)
 
-print Set.age_beg_phase
-for i in range(Set.age_beg_phase.shape[1]):
+#for i in range(Set.age_beg_phase.shape[1]):
 
-    plt.plot(Set.age_beg_phase[:, i],
-             Set.M)
+#    plt.plot(Set.age_beg_phase[:, i],
+#             Set.M)
 
-plt.plot(np.array((0, 100)), np.array((1e9, 1e9)), '--k')
-plt.show()
+#plt.plot(np.array((1e9, 1e9)), np.array((0.8, 100)), '--k')
+#plt.show()
 
-isochrone_masses = Set.get_isochrone_masses(t = 1e9)
-print isochrone_masses
+
+isochrone = Set.make_isochrone(age = 1e9)
+print isochrone
