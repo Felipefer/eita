@@ -41,6 +41,12 @@ print "Loading took {0} seconds.".format(time() - t0)
 #plt.plot(np.array((1e9, 1e9)), np.array((0.8, 100)), '--k')
 #plt.show()
 
+isoc_columns = ['age', 'mass', 'log_L', 'log_Teff', 'phase']
+isochrone = Set.make_isochrone(age = 1e9, isoc_columns=isoc_columns,
+                               verbose=True)
 
-isochrone = Set.make_isochrone(age = 1e9)
 print isochrone
+
+plt.plot(isochrone[:,2], isochrone[:,1])
+plt.gca().invert_xaxis()
+plt.show()

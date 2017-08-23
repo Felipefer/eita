@@ -9,11 +9,13 @@ EvTrack.py contains the functions used to work with evolutionary tracks
 """
 
 import copy
+import ev_track_columns as etcol
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
-
+from time import time
 import config
+import sys
 import utils
 import load
 
@@ -100,7 +102,10 @@ class EvTrack(object):
         :param columns: string or list of strings
         :return: data array
         """
-        
+        etcol_type = etcol.Ev_track_column
+        if all(isinstance(obj, etcol_type) for obj in columns):
+            columns = utils.etcolobjs2colnames(columns)
+
         # Obtain column indexes
         index = []
         for column in columns:
@@ -118,6 +123,12 @@ class EvTrack(object):
         :param return_EvTrack: if true, returns a new EvTrack object. If false,
                                updates the data in this object.
         """
+
+        # \todo write test to convert columns from etcol to strings if
+        # necessary
+        etcol_type = etcol.Ev_track_column
+        if all(isinstance(obj, etcol_type) for obj in columns):
+            columns = utils.etcolobjs2colnames(columns)
 
         # Use recursivity if the user desires to return a new EvTrack object
         # with the simplified array
@@ -599,6 +610,47 @@ class EvTrack_MassSet(object):
         self._set_array_age_beginning_phase()
         self._interp_mass_function = None
 
+    def simplify_array(self, columns, return_object = True):
+        """
+        Simplify the data array for it to contain only the chosen columns
+
+        :param columns: string or list of strings
+        :param return_object: if true, returns a new EvTrack_MassSet object.
+                              If false, updates the data in this object.
+        """
+
+        # Use recursivity if the user desires to return a new EvTrack_MassSet
+        # object with the simplified array
+        if return_object:
+            new_set = copy.deepcopy(self)
+            new_set.simplify_array(columns, return_object=False)
+
+            return new_set
+
+        else:
+            # Update self.columns
+            etcol_type = etcol.Ev_track_column
+            if all(isinstance(obj, etcol_type) for obj in columns):
+                columns = utils.etcolobjs2colnames(columns)
+
+            self.columns = columns
+
+            # Create new self.array
+            self.array = np.empty((len(self.M),
+                                   len(self.phase),
+                                   len(self.columns)))
+            self.array[:] = np.nan
+
+            # Update self.array with simplified data
+            for i in range(len(self)):
+                track_temp = self[i].simplify_array(columns = columns,
+                                                    return_EvTrack= True)
+
+                self.array[i, :, :] = track_temp.array
+
+    def __len__(self):
+        return len(self.M)
+
     def __getitem__(self, i):
         """
         self.__getitem__ returns the EvTrack object which has mass self.M[i]
@@ -606,8 +658,7 @@ class EvTrack_MassSet(object):
 
         # Had to do it to fix problems when len(self.M) == 1: ##################
         if len(self.array.shape) == 2:
-            array = np.empty((1, self.array.shape[0], self.array.shape[1]))
-            array[0, :, :] = self.array
+            array = self.array
 
         else:
             array = self.array[i, :, :]
@@ -739,28 +790,80 @@ class EvTrack_MassSet(object):
 
         self.age_beg_phase = age_beginning_phase
 
-    def make_isochrone(self, age, N = 5000, isoc_columns = None):
+    def make_isochrone(self, age, N = 5000, isoc_columns = None,
+                       verbose = False):
         """
         Generates an isochrone of given age sampled by N points
         """
 
-        # Set up columns parameter
+        # Set up columns parameter and prepare Set for interpolation
         if isoc_columns is None:
             isoc_columns = self.columns
+            Set_for_interp = copy.deepcopy(self)
+            if verbose:
+                print "Isoc_columns set as self.columns."
 
+        else:
+            # if isoc_columns given as name strings, trasform to etcol objects
+            if all(isinstance(name, str) for name in isoc_columns):
+                isoc_columns = utils.colnames2etcolobjs(isoc_columns)
+
+            if verbose:
+                print "Simplifying data array to contain only given columns."
+                t0 = time()
+            Set_for_interp = self.simplify_array(columns = isoc_columns,
+                                                 return_object= True)
+            if verbose:
+                print "Simplifying took {0} seconds.".format(time()-t0)
+
+        if verbose:
+            print "Estimating masses necessary to sample the isochrone."
+            t0 = time()
         isoc_masses = self.get_isochrone_masses(age=age, N=N)
 
-        #Setup isochrone interpolation
-        self.interp_mass(M=None, new_object=True)
+        if verbose:
+            print "Estimating {0} masses took {1} seconds.".format(N, time()-t0)
+
+        if verbose:
+            print "Obtaining interpolation coeficients"
+            t0 = time()
+        # Update Set_for_interp
+        Set_for_interp.interp_mass(M=None, new_object=False,
+                                   record_interp_function=True)
+
+        if verbose:
+            print "Obtaining coeficients took {0} seconds.".format(time()-t0)
 
         # Generate isochrone array
+        if verbose:
+            print "Preparing isochrone array"
         isoc_array = np.empty((N, len(isoc_columns)))
         isoc_array[:] = np.nan
 
+        if verbose:
+            print "Empty array of shape {0} created.".format(isoc_array.shape)
+
+        if verbose:
+            print "Filling isochrone array"
+
         for i in range(N):
-            track_temp = self.interp_mass(M = isoc_masses[i],
-                                          new_object=True)[0]
-            isoc_array[i,:] = track_temp.interp_age(age=age)
+            if verbose:
+                t0 = time()
+                pct = (i/float(N)) *100
+                print "{:6.2f}%".format(pct)
+                sys.stdout.flush()
+
+            track_temp = Set_for_interp.interp_mass(M = isoc_masses[i],
+                                                    new_object=True)
+            track_temp = Set_for_interp[0]
+
+            isoc_array[i,:] = track_temp.interp_age(age=age,
+                                                    columns=isoc_columns)
+
+        if verbose:
+            print ""
+            print "Filling data took {0} seconds.".format(time()-t0)
+            print "Isochrone data created"
 
         return isoc_columns
 

@@ -2,6 +2,8 @@
 Contains common used functions necessary for different modules
 """
 
+import ev_track_columns as etcol
+
 def abundanceY(Z):
     """
     Return Y abundance for a given Z abundance.
@@ -26,7 +28,17 @@ def isiterable(x):
 
 
 def colnames2etcolobjs(colnames):
-    pass
+    etcols_list = []
+
+    for name in colnames:
+        etcols_list.append(etcol.columns[name])
+
+    return etcols_list
 
 def etcolobjs2colnames(etcolobjs):
-    pass
+    colnames_list = []
+
+    for etcolobj in etcolobjs:
+        colnames_list.append(etcolobj.name)
+
+    return colnames_list
