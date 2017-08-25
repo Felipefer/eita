@@ -8,6 +8,8 @@ from time import time
 from matplotlib import pyplot as plt
 import numpy as np
 import copy
+import getpass
+import socket
 
 __version__ = "0.0.1"
 __author__  = "Felipe de Almeida Fernandes"
@@ -26,27 +28,29 @@ M = np.concatenate((np.arange( 0.80,  2.35, 0.05),
                     np.array((70, 80, 90, 95, 100, 120, 150))))
 
 model = "PARSEC"
-path = "/home/felipe/Evolutionary_Tracks/Original"
+
+path = None
+if socket.gethostname() == 'Bravos':
+    if getpass.getuser() == 'felipe':
+        path = '/home/felipe/Documents'
+else:
+    path = "/home/felipe/Evolutionary_Tracks/Original"
 
 print "Loading Evolutionary Tracks from files."
 t0 = time()
 Set = EvTrack.EvTrack_MassSet(Z=Z, M=M, model=model, path=path)
 print "Loading took {0} seconds.".format(time() - t0)
 
-#for i in range(Set.age_beg_phase.shape[1]):
-
-#    plt.plot(Set.age_beg_phase[:, i],
-#             Set.M)
-
-#plt.plot(np.array((1e9, 1e9)), np.array((0.8, 100)), '--k')
-#plt.show()
-
 isoc_columns = ['age', 'mass', 'log_L', 'log_Teff', 'phase']
-isochrone = Set.make_isochrone(age = 1e9, isoc_columns=isoc_columns,
+print "Starting make_isochrone method"
+t0 = time()
+isochrone = Set.make_isochrone(age = 1e9,
+                               N = 1000,
+                               isoc_columns = isoc_columns,
                                verbose=True)
-
+print "Total time to build the isochrone was {}".format(time()-t0)
 print isochrone
 
-plt.plot(isochrone[:,2], isochrone[:,1])
+plt.plot(isochrone[:, 3], isochrone[:, 2])
 plt.gca().invert_xaxis()
 plt.show()

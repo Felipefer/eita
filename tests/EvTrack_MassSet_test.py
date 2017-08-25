@@ -15,8 +15,9 @@ __email__   = "felipefer42@gmail.com"
 _parsec_tests_tracks_path = "./test_tracks_PARSEC"
 
 """
-Tests if EvTracks methods are working correctly
+Checks if EvTracks methods are working correctly
 """
+
 
 # Test EvTrack_MassSet init
 

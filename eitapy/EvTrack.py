@@ -633,21 +633,23 @@ class EvTrack_MassSet(object):
             if all(isinstance(obj, etcol_type) for obj in columns):
                 columns = utils.etcolobjs2colnames(columns)
 
-            self.columns = columns
-
             # Create new self.array
-            self.array = np.empty((len(self.M),
-                                   len(self.phase),
-                                   len(self.columns)))
-            self.array[:] = np.nan
+            new_array = np.empty((len(self.M),
+                                  len(self.phase),
+                                  len(columns)))
+            new_array[:] = np.nan
 
             # Update self.array with simplified data
             for i in range(len(self)):
-                track_temp = self[i].simplify_array(columns = columns,
-                                                    return_EvTrack= True)
+                track_temp = self[i]
+                track_temp.simplify_array(columns = columns,
+                                          return_EvTrack= False)
 
-                self.array[i, :, :] = track_temp.array
+                new_array[i, :, :] = track_temp.array
 
+            self.array = new_array
+            self.columns = columns
+            
     def __len__(self):
         return len(self.M)
 
@@ -834,7 +836,7 @@ class EvTrack_MassSet(object):
             if verbose:
                 # print message
                 print "Simplifying took {0} seconds.".format(time()-t0)
-
+              
         if verbose:
             print "Estimating masses necessary to sample the isochrone."
             t0 = time()
@@ -865,30 +867,26 @@ class EvTrack_MassSet(object):
         if verbose:
             print "Empty array of shape {0} created.".format(isoc_array.shape)
             print "Filling isochrone array"
-
-        for i in range(N):
+            t0 = time()
             
-            if verbose:
-                t0 = time()
-                pct = (i/float(N)) *100
-                print "{:6.2f}%".format(pct)
-                sys.stdout.flush()
+        for i in range(N):
 
-            track_temp = EvTrack(mass = isoc_masses[N],
+            track_array = interp_function(isoc_masses[i])
+            
+            track_temp = EvTrack(mass = isoc_masses[i],
                                  Z = self.Z,
                                  model = self.model,
-                                 array = self.array,
-                                 columns = self.columns)
-
-            isoc_array[i,:] = track_temp.interp_age(age=age,
-                                                    columns=isoc_columns)
+                                 array = track_array,
+                                 columns = isoc_columns)
+            
+            isoc_array[i, :] = track_temp.interp_age(age=age)
 
         if verbose:
             print ""
             print "Filling data took {0} seconds.".format(time()-t0)
             print "Isochrone data created"
 
-        return isoc_columns
+        return isoc_array
 
     def get_isochrone_masses(self, age, N = 5000):
         """
@@ -1071,109 +1069,62 @@ class EvTrack_MassSet(object):
 
         ########################################################################
 
+    def __add__(self, track):
+        """
+        
+        :param track:
+        :return:
+        """
+        # \Todo: this still needs to be tested
+        
+        # Only do something if the track's mass is not already present in the
+        # Set
+        if track.M not in self.M:
+            
+            # Checks if the track is compatible with the Set
+            if track.Z != self.Z:
+                raise ValueError(("Track metallicity does not match Set "
+                                  "metallicity"))
+    
+            if track.model != self.model:
+                raise ValueError("Track model does not match Set model")
+            
+            # Check if track contains all the columns necessary for the Set
+            for column in self.columns:
+                if column not in track.columns:
+                    raise ValueError(("Not all columns in the Set are present "
+                                      "in the Set."))
+                
+            # Remove additional columns from track
+            track.simplify_array(columns = self.columns, return_EvTrack = False)
+            
+            # Normalize the track to fit Set's phases
+            if track.phase != self.phase:
+                track.interp_phase(phase=self.phase, return_EvTrack = False)
+            
+            # include track mass in self.M
+            new_Set = copy.deepcopy(self)
+            
+            mass_list = copy.deepcopy(self.M)
+            new_array = np.empty((self.array.shape[0]+1,
+                                  self.array.shape[1],
+                                  self.array.shape[2]))
+            
+            new_mass_list, new_id = get_new_mass_index(mass_list = mass_list,
+                                                       new_mass = track.M)
+            
+            new_array[:new_id, :, :] = self.array[:new_id, :, :]
+            new_array[new_id, :, :]  = track.array
+            new_array[(new_id+1):, :, :] = self.array[new_id:, :, :]
+            
+            new_Set.M = new_mass_list
+            new_Set.array = new_array
+            
+            return new_Set
+        
     def save(self):
         # \TODO implement
         pass
-
-class EvTrack_setM(object):
-    #\TODO expand this docstring
-    """
-
-    """
-
-    def __init__(self, Z = None, M = None, phase = None,
-                 model = None, array = None, columns = None):
-
-        # Check if given model is supported in this version of eitapy
-        if model is None:
-            model = 'Not_Assigned'
-
-        elif model not in load.allowed_models:
-            raise ValueError(("{0} is not a supported file format.\n"
-                              "Supported formats are {1}."
-                              "").format(model, load.allowed_models))
-
-        # Assign empty list as default value for M
-        if M is None:
-            self.M = []
-        else:
-            self.M = M
-
-        self.phase = phase
-        self.columns = columns
-        self.Z = Z
-
-        # If Z is provided, calculate Y
-        if self.Z is not None:
-            self.Y = utils.abundanceY(Z)
-
-        self.model = model
-
-        # Initialize self.array
-        self.array = array
-
-        # if array is None, initialize array using the shape described by len of
-        # M, phase and columns
-        if self.array is None:
-            if self.phase is not None:
-                if self.columns is not None:
-                    self._initialize_array()
-
-
-    def _initialize_array(self):
-        """
-        Initialize the data array with the shape defined by the number of masses
-        in the set, number of phases in each EvTrack and the number of columns
-        in each EvTrack
-
-        Assigns self.array or raises an error telling what went wrong
-        """
-
-        if self.array is not None:
-            raise ValueError("self.array is already initialized")
-
-        else:
-
-            if self.phase is not None:
-
-                if self.columns is not None:
-                    # array shape sizes
-                    d1 = len(self.M)
-                    d2 = len(self.phase)
-                    d3 = len(self.columns)
-
-                    self.array = np.empty((d1, d2, d3))
-                    self.array[:] = np.nan
-
-                else:
-                    raise ValueError(("Can't initialize array if self.columns"
-                                      "is None"))
-
-            else:
-                raise ValueError("Can't initialize array if self.phase is None")
-
-    def add_track(self, evtrack):
-        """
-        add new evtrack to the data in the EvTrack_setM
-        """
-
-        # Attribute the EvTrack metallicity to the set if none has been assigned
-        if self.Z is None:
-            self.Z = evtrack.Z
-            self.Y = utils.abundanceY(self.Z)
-
-        # Attribute the EvTrack stage if the set stages are not assigned yet
-        if self.phase is None:
-            self.phase = evtrack.phase
-
-        # Check if Set and EvTrack metallicities are the same
-        if self.Z != evtrack.Z:
-            raise ValueError(("EvTrack metallicity does not correspond to the"
-                              "metallicity of the set and can not be addad."))
-
-        # Find the index of the mass to be added in self.mass
-        new_mass_id = get_new_mass_index(mass_list = self.M,
-                                         new_mass = evtrack.M)
 
 def get_new_mass_index(mass_list, new_mass):
     """
@@ -1192,4 +1143,4 @@ def get_new_mass_index(mass_list, new_mass):
     # Get the index of the new_mass in the updated list
     index = new_mass_list.index(new_mass)
 
-    return index
+    return new_mass_list, index
