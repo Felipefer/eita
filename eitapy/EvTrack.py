@@ -272,7 +272,7 @@ class EvTrack(object):
         # Deal with default values
         if columns is None:
             columns = self.column_names
-
+        
         # Check if "age" attribute is present and try to run with "log_age" if
         # it is not.
         if not hasattr(self, 'age'):
@@ -690,7 +690,27 @@ class EvTrack_MassSet(object):
 
             yield evtrack_i
 
-    def interp_mass(self, M = None, new_object = False,
+    def get_interp_mass_function(self, record_interp_function = True,
+                                 **kargs):
+        """
+        Returns the interp1d function for the Set as a function of mass.
+        """
+        
+        if self._interp_mass_function is not None:
+            return self._interp_mass_function
+        
+        else:
+            interp_function = interp1d(x = self.M,
+                                       y = self.array,
+                                       axis = 0,
+                                       **kargs)
+            
+            if record_interp_function:
+                self._interp_mass_function = interp_function
+            
+            return interp_function
+
+    def interp_mass(self, M, new_object = False,
                     record_interp_function = True, **kargs):
         """
         Interpolates the evolutionary track set for the given list of masses M
@@ -712,9 +732,8 @@ class EvTrack_MassSet(object):
         else:
             # If interpolation function is recorded, use it.
             if self._interp_mass_function is not None:
-                if M is not None:
-                    self.array = self._interp_mass_function(M)
-                    self.M = M
+                self.array = self._interp_mass_function(M)
+                self.M = M
 
             else:
                 # Create the interpolation function
@@ -723,9 +742,8 @@ class EvTrack_MassSet(object):
                                            axis=0,
                                            **kargs)
 
-                if M is not None:
-                    self.array = interp_function(M)
-                    self.M = M
+                self.array = interp_function(M)
+                self.M = M
 
                 if record_interp_function:
                     self._interp_mass_function = interp_function
@@ -800,62 +818,67 @@ class EvTrack_MassSet(object):
         if isoc_columns is None:
             isoc_columns = self.columns
             Set_for_interp = copy.deepcopy(self)
+            
             if verbose:
+                # print message
                 print "Isoc_columns set as self.columns."
 
         else:
-            # if isoc_columns given as name strings, trasform to etcol objects
-            if all(isinstance(name, str) for name in isoc_columns):
-                isoc_columns = utils.colnames2etcolobjs(isoc_columns)
 
             if verbose:
                 print "Simplifying data array to contain only given columns."
                 t0 = time()
+                
             Set_for_interp = self.simplify_array(columns = isoc_columns,
                                                  return_object= True)
             if verbose:
+                # print message
                 print "Simplifying took {0} seconds.".format(time()-t0)
 
         if verbose:
             print "Estimating masses necessary to sample the isochrone."
             t0 = time()
+            
         isoc_masses = self.get_isochrone_masses(age=age, N=N)
 
         if verbose:
             print "Estimating {0} masses took {1} seconds.".format(N, time()-t0)
-
-        if verbose:
             print "Obtaining interpolation coeficients"
             t0 = time()
+            
         # Update Set_for_interp
-        Set_for_interp.interp_mass(M=None, new_object=False,
-                                   record_interp_function=True)
+        interp_function = Set_for_interp.get_interp_mass_function()
 
         if verbose:
             print "Obtaining coeficients took {0} seconds.".format(time()-t0)
-
-        # Generate isochrone array
-        if verbose:
             print "Preparing isochrone array"
+        
+        # Generate isochrone array
+        
         isoc_array = np.empty((N, len(isoc_columns)))
         isoc_array[:] = np.nan
 
+        # Preparing columns
+        if all(isinstance(name, str) for name in isoc_columns):
+            isoc_columns = utils.colnames2etcolobjs(isoc_columns)
+            
         if verbose:
             print "Empty array of shape {0} created.".format(isoc_array.shape)
-
-        if verbose:
             print "Filling isochrone array"
 
         for i in range(N):
+            
             if verbose:
                 t0 = time()
                 pct = (i/float(N)) *100
                 print "{:6.2f}%".format(pct)
                 sys.stdout.flush()
 
-            track_temp = Set_for_interp.interp_mass(M = isoc_masses[i],
-                                                    new_object=True)
-            track_temp = Set_for_interp[0]
+            track_temp = EvTrack(mass = isoc_masses[N],
+                                 Z = self.Z,
+                                 model = self.model,
+                                 array = self.array,
+                                 columns = self.columns)
 
             isoc_array[i,:] = track_temp.interp_age(age=age,
                                                     columns=isoc_columns)
