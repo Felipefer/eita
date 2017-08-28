@@ -322,6 +322,31 @@ if __name__ == '__main__':
     if run in ('Y', 'y'):
         test_EvTrack_interp_age()
 
+
+def test_EvTrack_HB():
+    track = _initialize_track_for_test()
+
+    trackHB = EvTrack.EvTrack(mass=0.95,
+                              Z=0.014,
+                              path="./test_tracks_PARSEC",
+                              model="PARSEC",
+                              HB = True)
+
+    track.plot('log_Teff', 'log_L', color='red',
+               linestyle='-', zorder=0, label = 'phase 1-11')
+    trackHB.plot('log_Teff', 'log_L', color='blue',
+               linestyle='-', zorder=0, label = 'phase 12-15')
+
+    plt.legend()
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == '__main__':
+    run = raw_input("Run test_EvTrack_HB()? (y/N): ")
+
+    if run in ('Y', 'y'):
+        test_EvTrack_HB()
+
 def test_EvTrack_setM_init():
     Z = 0.14
     M = [0.95, 1.05, 1.10]

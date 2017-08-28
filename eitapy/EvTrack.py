@@ -30,7 +30,7 @@ class EvTrack(object):
     """
     
     def __init__(self, mass, Z, model = 'Not_Assigned', path = None,
-                 array = None, columns = None):
+                 array = None, columns = None, HB=False):
 
         # Check if given model is supported in this version of eitapy
         if model not in load.allowed_models:
@@ -47,7 +47,8 @@ class EvTrack(object):
                                                        model = model,
                                                        path = path,
                                                        array = array,
-                                                       columns = columns)
+                                                       columns = columns,
+                                                       HB = HB)
         
         # End of loading
         # Check if loading went fine

@@ -47,7 +47,7 @@ class LoadedEvolutionaryTrack(object):
     
     def __init__(self, mass, Z, model = "Not_Assigned",
                  auto_load = True, path = None, array = None,
-                 columns = None):
+                 columns = None, HB = False):
         """
         :param model: Ev_Track model
         """
@@ -63,9 +63,9 @@ class LoadedEvolutionaryTrack(object):
         self.model = model
 
         if auto_load:
-            self.load(path, array, columns)
+            self.load(path=path, array=array, columns=columns, HB=HB)
         
-    def load(self, path = None, array = None, columns = None):
+    def load(self, path = None, array = None, columns = None, HB = False):
         """
         loads data from path or array to loaded_evolutionary_track
         
@@ -114,7 +114,7 @@ class LoadedEvolutionaryTrack(object):
                         "{0} set").format(self.model))
 
         if path is not None:
-            self._load_from_file(path)
+            self._load_from_file(path=path, HB=HB)
             self.loaded = True
 
         elif array is not None:
@@ -153,7 +153,7 @@ class LoadedEvolutionaryTrack(object):
                 except AttributeError:
                     self.column_fmt[col.name] = "% 9.5f"
 
-    def _load_from_file(self, path):
+    def _load_from_file(self, path, HB=False):
         """
         used internally to load one of the standard models. Should generalize
         previous _load_model functions and make them obsolete.
@@ -161,7 +161,7 @@ class LoadedEvolutionaryTrack(object):
         model = self.model
 
         # Get full filename depending on the model
-        filepath = self._get_full_filepath(model, path)
+        filepath = self._get_full_filepath(model=model, path=path, HB=HB)
 
         # Load model file into ev_track_data
         # \todo check what to do with skiprows
@@ -190,7 +190,12 @@ class LoadedEvolutionaryTrack(object):
                 except AttributeError:
                     self.column_fmt[col.name] = "% 9.5f"
 
-    def _get_full_filepath(self, model, path):
+        # Fix PARSEC phases
+        if model == "PARSEC":
+            if self.column_names[-1] == 'phase':
+                ev_track_data[:,-1] = ev_track_data[:,-1]+11
+
+    def _get_full_filepath(self, model, path, HB=False):
         """
         used internally. Returns filepath (path + directory + filename) for each
         model
@@ -198,7 +203,8 @@ class LoadedEvolutionaryTrack(object):
         if model == "PARSEC":
             filename = parsec_filename(Z=self.Z,
                                        Y=self.Y,
-                                       mass=self.mass)
+                                       mass=self.mass,
+                                       HB=HB)
 
             directory = parsec_directory(Z=self.Z,
                                          Y=self.Y)
@@ -256,7 +262,7 @@ class LoadedEvolutionaryTrack(object):
 
 ################################################################################
 
-def parsec_filename(Z, Y, mass):
+def parsec_filename(Z, Y, mass, HB = False):
     """
     Get default name for PARSEC evolutionary tracks with mass M, and 
     compositions Y, Z
@@ -265,9 +271,14 @@ def parsec_filename(Z, Y, mass):
     Z_fmt = str(Z)
     Y_fmt = str(Y)
     OUTA = '1.77' if mass <= 0.7 else '1.74'
-    
-    return "Z{:s}Y{:s}OUTA{:s}_F7_M{:07.3f}.DAT".format(Z_fmt, Y_fmt,
-                                                        OUTA,  mass)
+
+    if HB:
+        return "Z{:s}Y{:s}OUTA{:s}_F7_M{:05.3f}.HB.DAT".format(Z_fmt, Y_fmt,
+                                                               OUTA, mass)
+
+    else:
+        return "Z{:s}Y{:s}OUTA{:s}_F7_M{:07.3f}.DAT".format(Z_fmt, Y_fmt,
+                                                            OUTA,  mass)
 
 
 def parsec_directory(Z, Y):
