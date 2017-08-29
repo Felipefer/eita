@@ -427,75 +427,75 @@ if __name__ == '__main__':
         test_mass_loss()
 
     
-def test_EvTrack_setM_init():
-    Z = 0.14
-    M = [0.95, 1.05, 1.10]
-    phase = np.arange(0, 10, 0.01)
-    columns = ["age", "mass", "log_L", "log_Teff", "log_R", "phase"]
-
-
-    print "Initializing providing only Z"
-    t0 = time()
-    evtrack_set = EvTrack.EvTrack_setM(Z = Z)
-    print "Initializing providing only Z took {0} sec\n".format(time()-t0)
-
-    print "dir: {0}".format(dir(evtrack_set))
-    print "Z: {0}".format(evtrack_set.Z)
-    print "M: {0}".format(evtrack_set.M)
-    print "phase: {0}".format(evtrack_set.phase)
-    print "columns: {0}".format(evtrack_set.columns)
-    print "array: {0}".format(evtrack_set.array)
-    if evtrack_set.array is not None:
-        print "array shape: {0}\n".format(evtrack_set.array.shape)
-
-
-    print "Initializing providing Z and M"
-    t0 = time()
-    evtrack_set = EvTrack.EvTrack_setM(Z=Z, M=M)
-    print "Initializing providing Z and M took {0} sec\n".format(time() - t0)
-
-    print "dir: {0}".format(dir(evtrack_set))
-    print "Z: {0}".format(evtrack_set.Z)
-    print "M: {0}".format(evtrack_set.M)
-    print "phase: {0}".format(evtrack_set.phase)
-    print "columns: {0}".format(evtrack_set.columns)
-    print "array: {0}".format(evtrack_set.array)
-    if evtrack_set.array is not None:
-        print "array shape: {0}\n".format(evtrack_set.array.shape)
-
-
-    print "Initializing providing Z and phase"
-    t0 = time()
-    evtrack_set = EvTrack.EvTrack_setM(Z=Z, phase=phase)
-    print "Initializing providing Z and phase took {0} sec\n".format(time() - t0)
-
-    print "dir: {0}".format(dir(evtrack_set))
-    print "Z: {0}".format(evtrack_set.Z)
-    print "M: {0}".format(evtrack_set.M)
-    print "phase: {0}".format(evtrack_set.phase)
-    print "columns: {0}".format(evtrack_set.columns)
-    print "array: {0}".format(evtrack_set.array)
-    if evtrack_set.array is not None:
-        print "array shape: {0}\n".format(evtrack_set.array.shape)
-
-    print "Initializing providing Z, M, phase and columns"
-    t0 = time()
-    evtrack_set = EvTrack.EvTrack_setM(Z=Z, M=M, phase=phase, columns=columns)
-    print ("Initializing providing Z, M, phase and columns "
-           "took {0} sec\n").format(time() - t0)
-
-    print "dir: {0}".format(dir(evtrack_set))
-    print "Z: {0}".format(evtrack_set.Z)
-    print "M: {0}".format(evtrack_set.M)
-    print "phase: {0}".format(evtrack_set.phase)
-    print "columns: {0}".format(evtrack_set.columns)
-    print "array: {0}".format(evtrack_set.array)
-    if evtrack_set.array is not None:
-        print "array shape: {0}".format(evtrack_set.array.shape)
-    print ""
-
-if __name__ == '__main__':
-    run = raw_input("Run EvTrack_setM.__init__ test? (y/N): ")
-
-    if run in ('Y', 'y'):
-        test_EvTrack_setM_init()
+# def test_EvTrack_setM_init():
+#     Z = 0.14
+#     M = [0.95, 1.05, 1.10]
+#     phase = np.arange(0, 10, 0.01)
+#     columns = ["age", "mass", "log_L", "log_Teff", "log_R", "phase"]
+#
+#
+#     print "Initializing providing only Z"
+#     t0 = time()
+#     evtrack_set = EvTrack.EvTrack_setM(Z = Z)
+#     print "Initializing providing only Z took {0} sec\n".format(time()-t0)
+#
+#     print "dir: {0}".format(dir(evtrack_set))
+#     print "Z: {0}".format(evtrack_set.Z)
+#     print "M: {0}".format(evtrack_set.M)
+#     print "phase: {0}".format(evtrack_set.phase)
+#     print "columns: {0}".format(evtrack_set.columns)
+#     print "array: {0}".format(evtrack_set.array)
+#     if evtrack_set.array is not None:
+#         print "array shape: {0}\n".format(evtrack_set.array.shape)
+#
+#
+#     print "Initializing providing Z and M"
+#     t0 = time()
+#     evtrack_set = EvTrack.EvTrack_setM(Z=Z, M=M)
+#     print "Initializing providing Z and M took {0} sec\n".format(time() - t0)
+#
+#     print "dir: {0}".format(dir(evtrack_set))
+#     print "Z: {0}".format(evtrack_set.Z)
+#     print "M: {0}".format(evtrack_set.M)
+#     print "phase: {0}".format(evtrack_set.phase)
+#     print "columns: {0}".format(evtrack_set.columns)
+#     print "array: {0}".format(evtrack_set.array)
+#     if evtrack_set.array is not None:
+#         print "array shape: {0}\n".format(evtrack_set.array.shape)
+#
+#
+#     print "Initializing providing Z and phase"
+#     t0 = time()
+#     evtrack_set = EvTrack.EvTrack_setM(Z=Z, phase=phase)
+#     print "Initializing providing Z and phase took {0} sec\n".format(time() - t0)
+#
+#     print "dir: {0}".format(dir(evtrack_set))
+#     print "Z: {0}".format(evtrack_set.Z)
+#     print "M: {0}".format(evtrack_set.M)
+#     print "phase: {0}".format(evtrack_set.phase)
+#     print "columns: {0}".format(evtrack_set.columns)
+#     print "array: {0}".format(evtrack_set.array)
+#     if evtrack_set.array is not None:
+#         print "array shape: {0}\n".format(evtrack_set.array.shape)
+#
+#     print "Initializing providing Z, M, phase and columns"
+#     t0 = time()
+#     evtrack_set = EvTrack.EvTrack_setM(Z=Z, M=M, phase=phase, columns=columns)
+#     print ("Initializing providing Z, M, phase and columns "
+#            "took {0} sec\n").format(time() - t0)
+#
+#     print "dir: {0}".format(dir(evtrack_set))
+#     print "Z: {0}".format(evtrack_set.Z)
+#     print "M: {0}".format(evtrack_set.M)
+#     print "phase: {0}".format(evtrack_set.phase)
+#     print "columns: {0}".format(evtrack_set.columns)
+#     print "array: {0}".format(evtrack_set.array)
+#     if evtrack_set.array is not None:
+#         print "array shape: {0}".format(evtrack_set.array.shape)
+#     print ""
+#
+# if __name__ == '__main__':
+#     run = raw_input("Run EvTrack_setM.__init__ test? (y/N): ")
+#
+#     if run in ('Y', 'y'):
+#         test_EvTrack_setM_init()

@@ -8,6 +8,8 @@ from time import time
 from matplotlib import pyplot as plt
 import numpy as np
 import copy
+import getpass
+import socket
 
 __version__ = "0.0.1"
 __author__  = "Felipe de Almeida Fernandes"
@@ -302,3 +304,39 @@ if __name__ == "__main__":
 
     if run in ('Y', 'y'):
         test_EvTrack_MassSet_array_age_beg_phase()
+
+
+def test_EvTrack_MassSet_include_HB():
+    Z = 0.017
+    M = [0.950, 1.000, 1.050]
+
+    model = "PARSEC"
+
+    if socket.gethostname() == 'Bravos':
+        if getpass.getuser() == 'felipe':
+            path = '/home/felipe/Documents'
+    elif socket.gethostname() == 'winterfell':
+        if getpass.getuser() == 'felipe':
+            path = '/home/felipe/Evolutionary_Tracks/Original'
+
+    Set = EvTrack.EvTrack_MassSet(Z=Z,
+                                  M=M,
+                                  model=model,
+                                  phase = np.linspace(0, 15,0.01)[1:],
+                                  path=path)
+
+    Set.plot('log_Teff', 'log_L', c='red', label = 'Original')
+
+    Set.include_HB(path = path)
+    Set.plot('log_Teff', 'log_L', c='blue', linestyle='--', label = 'HB added')
+
+    plt.gca().invert_xaxis()
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_MassSet_include_HB? "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_MassSet_include_HB()

@@ -202,12 +202,13 @@ class LoadedEvolutionaryTrack(object):
         model
         """
         if model == "PARSEC":
-            filename = parsec_filename(Z=self.Z,
-                                       Y=self.Y,
-                                       mass=self.mass,
-                                       HB=HB)
+            filename = utils.parsec_filename(path = path,
+                                             Z = self.Z,
+                                             Y = self.Y,
+                                             mass=self.mass,
+                                             HB=HB)
 
-            directory = parsec_directory(Z=self.Z,
+            directory = utils.parsec_directory(Z=self.Z,
                                          Y=self.Y)
 
             filepath = path + '/' + directory + '/' + filename
@@ -226,12 +227,13 @@ class LoadedEvolutionaryTrack(object):
         used internally to load parsec data format
         """
         
-        filename  = parsec_filename(Z    = self.Z,
-                                    Y    = self.Y,
-                                    mass = self.mass)
+        filename  = utils.parsec_filename(path = path,
+                                          Z = self.Z,
+                                          Y = self.Y,
+                                          mass = self.mass)
         
-        directory = parsec_directory(Z   = self.Z,
-                                     Y   = self.Y)
+        directory = utils.parsec_directory(Z   = self.Z,
+                                           Y   = self.Y)
         
         self.filename = directory+'/'+filename
         
@@ -263,32 +265,32 @@ class LoadedEvolutionaryTrack(object):
 
 ################################################################################
 
-def parsec_filename(Z, Y, mass, HB = False):
-    """
-    Get default name for PARSEC evolutionary tracks with mass M, and 
-    compositions Y, Z
-    """
-    
-    Z_fmt = str(Z)
-    Y_fmt = str(Y)
-    OUTA = '1.77' if mass <= 0.7 else '1.74'
-
-    if HB:
-        return "Z{:s}Y{:s}OUTA{:s}_F7_M{:05.3f}.HB.DAT".format(Z_fmt, Y_fmt,
-                                                               OUTA, mass)
-
-    else:
-        return "Z{:s}Y{:s}OUTA{:s}_F7_M{:07.3f}.DAT".format(Z_fmt, Y_fmt,
-                                                            OUTA,  mass)
-
-
-def parsec_directory(Z, Y):
-    """
-    Get the default PARSEC name for the folder containing data for composition 
-    Y, Z.
-    """
-    
-    Z_fmt = str(Z)
-    Y_fmt = str(Y)
-    
-    return "Z{:s}Y{:s}".format(Z_fmt, Y_fmt)
+# def parsec_filename(Z, Y, mass, HB = False):
+#     """
+#     Get default name for PARSEC evolutionary tracks with mass M, and
+#     compositions Y, Z
+#     """
+#
+#     Z_fmt = str(Z)
+#     Y_fmt = str(Y)
+#     OUTA = '1.77' if mass <= 0.7 else '1.74'
+#
+#     if HB:
+#         return "Z{:s}Y{:s}OUTA{:s}_F7_M{:05.3f}.HB.DAT".format(Z_fmt, Y_fmt,
+#                                                                OUTA, mass)
+#
+#     else:
+#         return "Z{:s}Y{:s}OUTA{:s}_F7_M{:07.3f}.DAT".format(Z_fmt, Y_fmt,
+#                                                             OUTA,  mass)
+#
+#
+# def parsec_directory(Z, Y):
+#     """
+#     Get the default PARSEC name for the folder containing data for composition
+#     Y, Z.
+#     """
+#
+#     Z_fmt = str(Z)
+#     Y_fmt = str(Y)
+#
+#     return "Z{:s}Y{:s}".format(Z_fmt, Y_fmt)

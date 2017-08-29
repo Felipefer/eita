@@ -22,7 +22,13 @@ import os
 
 default_interp_phase = {}
 #\TODO review this value. Used this only for testing
-default_interp_phase['PARSEC'] = np.linspace(0, 10, 0.01)
+default_interp_phase['PARSEC'] = np.concatenate((np.linspace(1+1e-8,1+1e-7,10),
+                                                 np.linspace(1+1e-7,1+1e-6,10),
+                                                 np.linspace(1+1e-6,1+1e-5,10),
+                                                 np.linspace(1+1e-5,1+1e-4,10),
+                                                 np.linspace(1+1e-4,1+1e-3,10),
+                                                 np.linspace(1+1e-3,1+1e-2,10),
+                                                 np.arange(1.01, 15, 0.01)))
 
 class EvTrack(object):
     #\TODO expand this docstring
@@ -255,6 +261,8 @@ class EvTrack(object):
             interp_function = interp1d(x = self.phase,
                                        y = self.array,
                                        axis = 0,
+                                       bounds_error = False,
+                                       fill_value = np.nan,
                                        **kargs)
 
             # Update array
@@ -295,7 +303,12 @@ class EvTrack(object):
         # Get simplified array to interpolate
         array = self.return_simplified_array(columns)
 
-        array_interp_function = interp1d(self.age, array, axis = 0, **kargs)
+        array_interp_function = interp1d(self.age,
+                                         array,
+                                         axis = 0,
+                                         bounds_error=False,
+                                         fill_value=np.nan,
+                                         **kargs)
         age_array_line = array_interp_function(age)
 
         return age_array_line
@@ -435,6 +448,9 @@ class EvTrack(object):
         
         self.mass[RGB] = M
 
+        RGB_final_mass = M[-1]
+        return RGB_final_mass
+
     def __add__(self, evtrack):
         """
         Adds data from two EvTracks of same initial mass and composition. This
@@ -511,7 +527,7 @@ class EvTrack(object):
             raise AttributeError(("Model {} is not supported by the "
                                   "_update_HB_attributes "
                                   "method.").format(self.model))
-        
+
         if np.floor(phase.max()) <= model_RGB_tip_phase:
             self.hasHB = False
         else:
@@ -826,6 +842,8 @@ class EvTrack_MassSet(object):
             interp_function = interp1d(x = self.M,
                                        y = self.array,
                                        axis = 0,
+                                       bounds_error=False,
+                                       fill_value=np.nan,
                                        **kargs)
             
             if record_interp_function:
@@ -863,6 +881,8 @@ class EvTrack_MassSet(object):
                 interp_function = interp1d(x=self.M,
                                            y=self.array,
                                            axis=0,
+                                           bounds_error=False,
+                                           fill_value=np.nan,
                                            **kargs)
 
                 self.array = interp_function(M)
@@ -925,7 +945,8 @@ class EvTrack_MassSet(object):
 
             age_beginning_phase_i_fun = interp1d(x = track.phase,
                                                  y = track.age,
-                                                 bounds_error=False)
+                                                 bounds_error=False,
+                                                 fill_value=np.nan)
 
             age_beginning_phase[i,:] = age_beginning_phase_i_fun(phases)
 
@@ -1026,7 +1047,8 @@ class EvTrack_MassSet(object):
 
             interp_fun = interp1d(x = x,
                                   y = y,
-                                  bounds_error=False)
+                                  bounds_error=False,
+                                  fill_value=np.nan)
 
             # Include in the mass list the mass corresponding to this age
             beg_mass.append(interp_fun(age))
@@ -1071,17 +1093,17 @@ class EvTrack_MassSet(object):
 
         else:
             if self.EvTrack_list_is_provided:
-                # Try to get the phases from the first object in the list
+                # # Try to get the phases from the first object in the list
+                # try:
+                #     self.phase = refEvTrack.phase
+                #
+                # except:
                 try:
-                    self.phase = refEvTrack.phase
+                    # Try to get default model phases
+                    self.phase = default_interp_phase[self.model]
 
                 except:
-                    try:
-                        # Try to get default model phases
-                        self.phase = default_interp_phase[self.model]
-
-                    except:
-                        raise ValueError("Could not assign phase attribute.")
+                    raise ValueError("Could not assign phase attribute.")
 
             elif self.array_is_provided:
                 # Try to get the phases from the first object in the array
@@ -1097,15 +1119,18 @@ class EvTrack_MassSet(object):
                         raise ValueError("Could not assign phase attribute.")
 
             elif self.load_info_is_provided:
+                # try:
+                #     self.phase = refEvTrack.phase
+                # except:
                 try:
-                    self.phase = refEvTrack.phase
-                except:
-                    try:
-                        # Try to get default model phases
-                        self.phase = default_interp_phase[self.model]
+                    # Try to get default model phases
+                    self.phase = default_interp_phase[self.model]
+                    print self.model
+                    print self.phase
+                    print default_interp_phase['PARSEC']
 
-                    except:
-                        raise ValueError("Could not assign phase attribute.")
+                except:
+                    raise ValueError("Could not assign phase attribute.")
 
     def _check_if_all_needed_info_is_given(self, EvTrack_list = None,
                                            Z = None, M = None, phase = None,
@@ -1242,8 +1267,67 @@ class EvTrack_MassSet(object):
             new_Set.array = new_array
             
             return new_Set
-        
-    def save(self):
+
+    def include_HB(self, path, eta = 0.477):
+
+        Z = self.Z
+
+        if self.model == "PARSEC":
+            # Get the masses for all HB models for this composition
+            HB_M = utils.get_PARSEC_HB_masses(Z, path)
+
+            # Selects phases for the HB models
+            HB_start = 12
+            HB_end = 15
+
+
+        else:
+            raise AttributeError(("The model {} is not supported by the "
+                                  "include_HB method."))
+
+        print self.phase
+
+        HB = ((self.phase >= HB_start) &
+              (self.phase <= HB_end))
+
+        HB_phases = self.phase[HB]
+
+        # Load all HB tracks
+        HBtracks = []
+        for i in range(len(HB_M)):
+            # Load HBtrack for mass M[i]
+            HBtrack_i = EvTrack(mass=HB_M[i], Z=Z, path=path,
+                                model=self.model, HB=True)
+
+            HBtracks.append(HBtrack_i)
+
+        # Create the EvTrack_MassSet for the HB
+        HBtracks_Set = EvTrack_MassSet(EvTrack_list=HBtracks,
+                                       phase=HB_phases,
+                                       columns=self.columns)
+
+        # Obtain interpolation of the HBtracks_Set
+        HBtracks_interp_function = HBtracks_Set.get_interp_mass_function()
+
+        # Select index of all self.M that can have HB included
+        mass_index = np.array(range(len(self.M)))
+        mass_index = mass_index[(self.M >= HB_M.min()) &
+                                (self.M <= HB_M.max())]
+
+        for i in mass_index:
+            track_i = self[i]
+
+            # Update RGB mass loss and get HB_init_mass
+            HB_init_mass = track_i.rgb_mass_loss(eta = eta)
+            HB_i_array = HBtracks_interp_function(HB_init_mass)
+
+            # Include HB to track_i
+            track_i.array[HB, :] = HB_i_array
+
+            # Update self data
+            self.array[i, :, :] = track_i.array
+
+def save(self):
         # \TODO implement
         pass
     
