@@ -18,6 +18,7 @@ import config
 import sys
 import utils
 import load
+import os
 
 default_interp_phase = {}
 #\TODO review this value. Used this only for testing
@@ -94,7 +95,13 @@ class EvTrack(object):
             self.column_index[column] = i
             self.array[:, i] = getattr(EvTrackData, column)
             setattr(self, column, self.array[:, i])
-    
+        
+        if HB is True:
+            self.hasHB = True
+            self.onlyHB = True
+        else:
+            self.hasHB = False
+            self.onlyHB = False
     
     def return_simplified_array(self, columns):
         """
@@ -258,6 +265,7 @@ class EvTrack(object):
 
             # Update attributes
             self._update_colname_attributes()
+            self._update_HB_attributes()
 
     def interp_age(self, age, columns = None, **kargs):
         """
@@ -359,6 +367,74 @@ class EvTrack(object):
                        delimiter = delimiter,
                        **kargs)
 
+    def rgb_mass_loss(self, eta = 0.477):
+        
+        # Reimers Formula according to McDonald & Zijlstra (2015).
+        #
+        # Mdot = (4e-13 * eta_R) * (LR)/(M) [M_sun/yr]
+        #
+        # [L] = [L_sun], [R] = [R_sun], [M] = [M_sun]
+        # eta_R = 0.477 +- 0.070 (McDonald & Zijlstra, 2015)
+
+        R_sun_cm = 6.957e10  # [cm]
+        
+        # Select only RGB phase and convert R, L, M to the correct units
+        if self.model == "PARSEC":
+            
+            RGB_phase_init = 8
+            RGB_phase_end  = 11
+            
+            RGB = ((self.phase >= RGB_phase_init) &
+                   (self.phase <= RGB_phase_end))
+            
+            try:
+                R = (10**self.log_R[RGB])/R_sun_cm # [R_sun]
+            except AttributeError:
+                raise AttributeError(("Attribute log_R is not present and the "
+                                      "mass loss during RGB phase cannot be "
+                                      "estimated"))
+            
+            try:
+                L = 10**self.log_L[RGB]
+            except:
+                raise AttributeError(("Attribute log_L is not present and the "
+                                      "mass loss during RGB phase cannot be "
+                                      "estimated"))
+            
+            try:
+                M = copy.deepcopy(self.mass[RGB])
+            except AttributeError:
+                raise AttributeError(("Attribute mass is not present and the "
+                                      "mass loss during RGB phase cannot be "
+                                      "estimated"))
+            
+            try:
+                t = copy.deepcopy(self.age[RGB])
+            except AttributeError:
+                raise AttributeError(("Attribute age is not present and the "
+                                      "mass loss during RGB phase cannot be "
+                                      "estimated"))
+            
+        else:
+            raise AttributeError(("The method RGB_mass_loss does not support "
+                                  "the {0} model").format(self.model))
+        
+        
+        mdot    = np.empty(len(M))
+        mdot[:] = np.nan
+        
+        for i in range(len(M)-1):
+            Dt = t[i+1]-t[i]
+            DM = (4e-13 * eta) * (L[i]*R[i])/(M[i]) * Dt
+            M[i+1] = M[i] - DM
+        
+            mdot[i] = DM/Dt
+
+        if hasattr(self, 'mdot'):
+            self.mdot[RGB] = mdot
+        
+        self.mass[RGB] = M
+
     def __add__(self, evtrack):
         """
         Adds data from two EvTracks of same initial mass and composition. This
@@ -386,12 +462,17 @@ class EvTrack(object):
 
         # Remove from self the phase interval that contains both self and
         # evtrack data
-        remove_common_phases_from_self = ((self.phase < evtrack.phase.min()) &
+        print "set(self.phase: {}".format(set(np.floor(self.phase)))
+        print "set(evtrack.phase: {}".format(set(np.floor(evtrack.phase)))
+        
+        remove_common_phases_from_self = ((self.phase < evtrack.phase.min()) |
                                           (self.phase > evtrack.phase.max()))
 
-        phase0 = self.phase[remove_common_phases_from_self]
-        array0 = self.array[remove_common_phases_from_self]
+        phase0 = copy.deepcopy(self.phase)[remove_common_phases_from_self]
+        array0 = copy.deepcopy(self.array)[remove_common_phases_from_self]
 
+        print "array0.shape: {}".format(array0.shape)
+        
         # Concatenate both data
         phase = np.concatenate((phase0, evtrack.phase))
         array = np.concatenate((array0, evtrack.array))
@@ -400,12 +481,46 @@ class EvTrack(object):
         argsort = phase.argsort()
         array = array[argsort, :]
 
-        # Update self data
-        self.array = array
-        self._update_colname_attributes()
-
-        return self
-
+        # create new object and update data
+        evtrack_combined = copy.deepcopy(self)
+        evtrack_combined.array = array
+        evtrack_combined._update_colname_attributes()
+        evtrack_combined._update_HB_attributes()
+        
+        return evtrack_combined
+    
+    def _update_HB_attributes(self):
+        """
+        
+        :return:
+        """
+        
+        try:
+            phase = self.phase[~np.isnan(self.phase)]
+        except AttributeError:
+            raise AttributeError(("Could not access self.phase to update "
+                                  "self.hasHB and self.onlyHB."))
+        
+        model_RGB_tip = None
+        if self.model == "PARSEC":
+            model_RGB_tip_phase = 11
+        else:
+            model_RGB_tip_phase = None
+        
+        if model_RGB_tip_phase is None:
+            raise AttributeError(("Model {} is not supported by the "
+                                  "_update_HB_attributes "
+                                  "method.").format(self.model))
+        
+        if np.floor(phase.max()) <= model_RGB_tip_phase:
+            self.hasHB = False
+        else:
+            self.hasHB = True
+        
+        if phase.min() >= (model_RGB_tip_phase+1):
+            self.onlyHB = True
+        else:
+            self.onlyHB = False
 
 class EvTrack_MassSet(object):
     #\TODO expand this docstring
@@ -414,7 +529,8 @@ class EvTrack_MassSet(object):
     """
 
     def __init__(self, EvTrack_list = None, Z = None, M = None, phase = None,
-                 model = None, path = None, array = None, columns = None):
+                 model = None, path = None, array = None, columns = None,
+                 HB = False):
         """
         Initializes the EvTrack_MassSet. There are three possible ways to load
         EvTrack_MassSet. 1) By giving a list of EvTrack objects of same
@@ -611,6 +727,10 @@ class EvTrack_MassSet(object):
         self._set_array_age_beginning_phase()
         self._interp_mass_function = None
 
+    def include_HB_data(self, path = None):
+        
+        Z = self.Z
+        
     def simplify_array(self, columns, return_object = True):
         """
         Simplify the data array for it to contain only the chosen columns
@@ -1126,6 +1246,7 @@ class EvTrack_MassSet(object):
     def save(self):
         # \TODO implement
         pass
+    
 
 def get_new_mass_index(mass_list, new_mass):
     """
@@ -1145,3 +1266,28 @@ def get_new_mass_index(mass_list, new_mass):
     index = new_mass_list.index(new_mass)
 
     return new_mass_list, index
+    
+def get_PARSEC_HB_masses(Z, path):
+    """
+    
+    :param Z:
+    :param path:
+    :return:
+    """
+    
+    Y = utils.abundanceY(Z)
+    fullpath = path + '/' + utils.parsec_directory(Z,Y)
+    
+    filenames = os.listdir(fullpath)
+    
+    HB_files = []
+    for filename in range(len(filenames)):
+        if 'HB' in filename:
+            HB_files.append(filename)
+    
+    M = []
+    # The mass in the filename is what comes after M and before .HB, so:
+    for HB_file in HB_files:
+        M.append(float(HB_file.split('M')[1].split('.HB')[0]))
+    
+    return M

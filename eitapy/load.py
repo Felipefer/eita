@@ -191,9 +191,10 @@ class LoadedEvolutionaryTrack(object):
                     self.column_fmt[col.name] = "% 9.5f"
 
         # Fix PARSEC phases
-        if model == "PARSEC":
-            if self.column_names[-1] == 'phase':
-                ev_track_data[:,-1] = ev_track_data[:,-1]+11
+        if HB:
+            if model == "PARSEC":
+                if self.column_names[-1] == 'phase':
+                    ev_track_data[:,-1] = ev_track_data[:,-1]+11
 
     def _get_full_filepath(self, model, path, HB=False):
         """

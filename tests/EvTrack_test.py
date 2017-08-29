@@ -342,11 +342,91 @@ def test_EvTrack_HB():
     plt.show()
 
 if __name__ == '__main__':
-    run = raw_input("Run test_EvTrack_HB()? (y/N): ")
+    run = raw_input("Run test_EvTrack_HB? (y/N): ")
 
     if run in ('Y', 'y'):
         test_EvTrack_HB()
 
+
+def test_EvTrack_add_HB():
+    track = _initialize_track_for_test()
+
+    trackHB = EvTrack.EvTrack(mass=0.95,
+                              Z=0.014,
+                              path="./test_tracks_PARSEC",
+                              model="PARSEC",
+                              HB = True)
+
+    track_combined = track + trackHB
+    
+    track.plot('log_Teff', 'log_L', color='red',
+               linestyle='-', zorder=0, label = 'phase 1-11')
+    trackHB.plot('log_Teff', 'log_L', color='blue',
+                 linestyle='-', zorder=0, label = 'phase 12-15')
+    track_combined.plot('log_Teff', 'log_L', color = 'green',
+                        linestyle = '--', zorder = 0, label = 'phase 1-15')
+
+    plt.legend()
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == '__main__':
+    run = raw_input("Run test_EvTrack_add_HB? (y/N): ")
+
+    if run in ('Y', 'y'):
+        test_EvTrack_add_HB()
+
+def test_mass_loss():
+    
+    tracks = []
+    mass = [0.8, 1, 1.2, 1.5, 1.85, 3, 5]
+    
+    c = ['r', 'b', 'g', 'c', 'm', 'k', 'y']
+    
+    
+    for i in range(len(mass)):
+        tracks.append(EvTrack.EvTrack(mass=mass[i],
+                                      Z=0.014,
+                                      path="./test_tracks_PARSEC",
+                                      model="PARSEC"))
+        
+        tracks[i].plot('phase', 'mass', linestyle = '--', c = c[i])
+    
+    # Apply mass loss and plot
+    
+    for i in range(len(mass)):
+        tracks[i].rgb_mass_loss()
+        tracks[i].plot('phase', 'mass', linestyle = '-', c = c[i],
+                       label = 'm_ini = {}'.format(mass[i]))
+    
+    plt.gca().set_xlabel('phase')
+    plt.gca().set_ylabel('mass')
+    plt.legend()
+    plt.show()
+    
+    for i in range(len(mass)):
+        phase = tracks[i].phase
+        R = 10**tracks[i].log_R/6.957e10
+        
+        plt.plot(phase, R, linestyle = '-', c = c[i],
+                 label = 'm_ini = {}'.format(mass[i]))
+    plt.show()
+    
+    for i in range(len(mass)):
+        phase = tracks[i].phase
+        L = 10 ** tracks[i].log_L
+    
+        plt.plot(phase, L, linestyle = '-', c = c[i],
+                 label = 'm_ini = {}'.format(mass[i]))
+    plt.show()
+    
+if __name__ == '__main__':
+    run = raw_input("Run test_mass_loss? (y/N): ")
+
+    if run in ('Y', 'y'):
+        test_mass_loss()
+
+    
 def test_EvTrack_setM_init():
     Z = 0.14
     M = [0.95, 1.05, 1.10]
