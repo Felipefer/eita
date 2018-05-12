@@ -8,6 +8,9 @@ __date__    = "June 2017"
 EvTrack.py contains the functions used to work with evolutionary tracks
 """
 
+import sys
+sys.path.insert(0, '..')
+
 import copy
 import ev_track_columns as etcol
 import numpy as np
@@ -15,7 +18,6 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 from time import time
 import config
-import sys
 import utils
 import load
 import os
@@ -28,7 +30,7 @@ default_interp_phase['PARSEC'] = np.concatenate((np.linspace(1+1e-8,1+1e-7,10),
                                                  np.linspace(1+1e-5,1+1e-4,10),
                                                  np.linspace(1+1e-4,1+1e-3,10),
                                                  np.linspace(1+1e-3,1+1e-2,10),
-                                                 np.arange(1.01, 15, 0.01)))
+                                                 np.arange(1.01, 16, 0.01)))
 
 class EvTrack(object):
     #\TODO expand this docstring
@@ -433,8 +435,13 @@ class EvTrack(object):
         else:
             raise AttributeError(("The method RGB_mass_loss does not support "
                                   "the {0} model").format(self.model))
-        
-        
+
+        # If RGB is not present in the evolutionary track, mass loss is not
+        # calculated and the final RGB mass is returned as None
+        if len(M) == 0:
+            return None
+
+        # Otherwise, calculate mass loss during RGB and return final mass
         mdot    = np.empty(len(M))
         mdot[:] = np.nan
         
@@ -745,10 +752,6 @@ class EvTrack_MassSet(object):
         self._set_array_age_beginning_phase()
         self._interp_mass_function = None
 
-    def include_HB_data(self, path = None):
-        
-        Z = self.Z
-        
     def simplify_array(self, columns, return_object = True):
         """
         Simplify the data array for it to contain only the chosen columns
@@ -852,6 +855,23 @@ class EvTrack_MassSet(object):
                 self._interp_mass_function = interp_function
             
             return interp_function
+
+    def interp_phase(self, phase, new_object = False,
+                    record_interp_function = True, **kargs):
+
+        if new_object:
+            new_set = copy.deepcopy(self)
+            new_set.interp_phase(phase=phase, new_object = False, **kargs)
+
+            return new_set
+
+        else:
+            # Considering that the __init__ already deals with a interpolation
+            # of phases, this was the simplest way to implementing this method
+            # without having to write too much code.
+            self = EvTrack_MassSet(Z = self.Z, M = self.M,
+                                   model = self.model, array = self.array,
+                                   columns = self.columns, phase = phase)
 
     def interp_mass(self, M, new_object = False,
                     record_interp_function = True, **kargs):
@@ -1280,14 +1300,13 @@ class EvTrack_MassSet(object):
 
             # Selects phases for the HB models
             HB_start = 12
-            HB_end = 15
+            HB_end = 16
 
 
         else:
             raise AttributeError(("The model {} is not supported by the "
                                   "include_HB method."))
 
-        print self.phase
 
         HB = ((self.phase >= HB_start) &
               (self.phase <= HB_end))
@@ -1321,13 +1340,253 @@ class EvTrack_MassSet(object):
 
             # Update RGB mass loss and get HB_init_mass
             HB_init_mass = track_i.rgb_mass_loss(eta = eta)
-            HB_i_array = HBtracks_interp_function(HB_init_mass)
+            if HB_init_mass is not None:
 
-            # Include HB to track_i
-            track_i.array[HB, :] = HB_i_array
+                HB_i_array = HBtracks_interp_function(HB_init_mass)
 
-            # Update self data
-            self.array[i, :, :] = track_i.array
+                # Include HB to track_i
+                track_i.array[HB, :] = HB_i_array
+
+                # Update self data
+                self.array[i, :, :] = track_i.array
+            else:
+                continue
+
+
+    def get_phase_completeness(self, proxy_column = 'log_Teff',
+                               plot = False, show = False, **kwargs):
+        """
+
+        :param proxy: column that will be used to check if its value is present
+                      for a given phase value.
+        :return: a completeness array with lines representing different masses
+                 and columns different phases. If the data is present for a
+                 given mass and phase, its value in the array is True.
+        """
+        # Get proxy_column index
+        N_cols = self.array.shape[2]
+        column_names = np.array(self[0].column_names)
+        proxy_column_id = np.arange(N_cols)[column_names == proxy_column]
+
+        # Get completeness mask
+        completeness_mask = ~np.isnan(self.array[:,:,proxy_column_id])
+
+        if plot:
+            N_lines = self.array.shape[1]
+            for i in range(len(self.M)):
+                mask = completeness_mask[i].reshape(1, N_lines)[0]
+                x = self.phase[mask]
+                y = np.array([self.M[i]]*N_lines)[mask]
+
+                plt.plot(x,y,'o', **kwargs)
+
+            if show:
+                plt.show()
+
+        return completeness_mask
+
+class EvTrack_ZSet(object):
+    """
+
+    """
+
+    def __init__(self, EvTrack_MassSet_list = None, Z = None, M = None,
+                 phase = None, model = None, path = None, array = None,
+                 columns = None, HB = False):
+        """
+        Initializes the EvTrack_ZSet. There are three possible ways to load
+        EvTrack_ZSet. 1) By giving a list of EvTrack_MassSet objects. 2) By
+        loading data from a file, specified by Z list, M list, model and path.
+        3) By explicitly providing the whole data Z, M list, model, array,
+        columns.
+        """
+
+        ########################################################################
+        # Perform some tests to check if all necessary data is provided
+
+        # Check the method used to load the data
+        self.EvTrack_MassSet_list_is_provided = False
+        self.array_is_provided = False
+        self.load_info_is_provided = False
+
+        # This will update the above booleans
+        self._check_if_all_needed_info_is_given(EvTrack_MassSet_list=EvTrack_MassSet_list,
+                                                Z=Z, M=M, phase=phase,
+                                                model=model, path=path,
+                                                array=array, columns=columns)
+
+        if not any([self.EvTrack_MassSet_list_is_provided,
+                    self.array_is_provided,
+                    self.load_info_is_provided]):
+
+            raise ValueError("Not enought information was provided to load the"
+                             "evolutionary set from any of the three possible"
+                             "methods (from EvTracks list, explicitly from "
+                             "data array, or load from files. Check the "
+                             "documentation to see how to load data from any of"
+                             " these methods.")
+
+        # Deal with the model parameter
+        if model is not None:
+            if model not in load.allowed_models:
+                raise ValueError(("{0} is not a supported model.\n"
+                                  "Supported models are {1}."
+                                  "").format(model, load.allowed_models))
+            else:
+                self.model = model
+        else:
+            self.model = "Not_Assigned"
+
+        ########################################################################
+
+        # Initialize EvTrack set according to the method chosen by the user's
+        # parameters entries.
+
+        # Set attributes depending on initialization kind (all but array)
+        self.phase = None  # Will be set by self._prepare_phase_parameter
+
+        if self.EvTrack_MassSet_list_is_provided:
+
+            # Get reference EvTrack
+            refEvTrack_MassSet = EvTrack_MassSet_list[0]
+
+            # self.Z is given by the reference object
+            self.Z = []
+            self.Y = []
+            for evtrack_massset in EvTrack_MassSet_list:
+                self.Z.append(evtrack_massset.Z)
+                self.Y.append(evtrack_massset.Y)
+
+            # self.M is a list containing the initial mass of each track for the
+            # first mass set
+            self.M = []
+            for evtrack_massset_obj in refEvTrack_MassSet:
+                self.M.append(evtrack_massset_obj.M)
+
+            # self.model is given by the reference object
+            self.model = refEvTrack_MassSet.model
+
+            # if columns is None, get it from reference object
+            if columns is None:
+                self.columns = refEvTrack_MassSet.column_names
+            else:
+                self.columns = columns
+
+            # Get phase
+                self.phase = refEvTrack_MassSet.phase
+
+            # Generate self.array
+            array = np.empty((len(self.Z), len(self.M),
+                              len(self.phase), len(self.columns)))
+            array[:] = np.nan
+
+            # Fill the array
+            for i in range(len(self.Z)):
+                # Check if MassSet masses and phases are the same as self
+                EvTrack_MassSet_tmp = EvTrack_MassSet_list[i]
+                if EvTrack_MassSet_tmp.M != self.M:
+                    EvTrack_MassSet_tmp.interp_mass(self.M)
+                if EvTrack_MassSet_tmp.phase != self.phase:
+                    EvTrack_MassSet_tmp.interp_phase(self.phase)
+
+                array[i,:,:,:] = EvTrack_MassSet_tmp.array
+
+            self.array = array
+
+
+    def _check_if_all_needed_info_is_given(self, EvTrack_MassSet_list = None,
+                                           Z = None, M = None, phase = None,
+                                           model = None, path = None,
+                                           array = None, columns = None):
+
+        """
+        Used internally to check if the user provided all the necessary data to
+        initialize the array from any of the given methods.
+        """
+
+        EvTrack_MassSet_list_is_provided = False
+        array_is_provided = False
+        load_info_is_provided = False
+
+        # Check if EvTrack_MassSet_list is provided and if it is a list
+        if EvTrack_MassSet_list is not None:
+            if utils.isiterable(EvTrack_MassSet_list):
+                EvTrack_MassSet_list_is_provided = True
+            else:
+                raise ValueError("if provided, EvTrack_MassSet_list must be a list of"
+                                 "EvTrack_MassSet objects")
+
+        # If EvTrack_list is provided, check if unnecessary data was
+        # also given by the user:
+        if EvTrack_MassSet_list_is_provided:
+            param_dict = {'Z': Z, 'M': M, 'model': model, 'path': path,
+                          'array': array}
+            for param in param_dict.keys():
+                if param_dict[param] is not None:
+                    raise ValueError(("When providing EvTrack_list, it is not "
+                                      "necessary to also provide the parameter "
+                                      "{0}, which may cause conflicts during "
+                                      "evaluation.").format(param))
+
+        # Check if array is provided, meaning data will be given explicitly
+        if array is not None:
+            array_is_provided = True
+
+        # If array is provided, check if the other necessary information is also
+        # provided.
+        if array_is_provided:
+            param_dict = {'Z': Z, 'M': M, 'model': model, 'columns': columns}
+
+            for param in param_dict.keys():
+                if param_dict[param] is None:
+                    raise ValueError(("When explicitly providing the data, "
+                                      "parameter {0} must be assigned"
+                                      ".").format(param))
+
+        # Check if array's shape agrees with the other given information
+        if array_is_provided:
+            if array.shape[0] != len(Z):
+                raise ValueError(("The number of provided compositions in list Z "
+                                  "({0}) does not agree with the size of the "
+                                  "dimension 0 of the given array ({1})"
+                                  ".").format(len(Z), array.shape[0]))
+
+            if array.shape[1] != len(M):
+                raise ValueError(("The number of provided masses in list M "
+                                  "({0}) does not agree with the size of the "
+                                  "dimension 1 of the given array ({1})"
+                                  ".").format(len(M), array.shape[1]))
+
+            if array.shape[3] != len(columns):
+                raise ValueError(("The number of provided columns "
+                                  "({0}) does not agree with the size of the "
+                                  "dimension 3 of the given array ({1})"
+                                  ".").format(len(columns), array.shape[3]))
+
+        # If neither array, nor EvTrack objects are provided, check if all the
+        # information to load from a file is provided
+        if not any([EvTrack_MassSet_list_is_provided, array_is_provided]):
+            param_dict = {'Z': Z, 'M': M, 'model': model, 'path': path}
+
+            for param in param_dict.keys():
+                if param_dict[param] is None:
+                    raise ValueError(("When loading data from files, "
+                                      "parameter {0} must be assigned"
+                                      ".").format(param))
+
+            # If it gets here
+            load_info_is_provided = True
+
+        self.EvTrack_list_is_provided = EvTrack_MassSet_list_is_provided
+        self.array_is_provided = array_is_provided
+        self.load_info_is_provided = load_info_is_provided
+
+        ########################################################################
+
+
+
+
+
 
 
 class Isochrone(object):
