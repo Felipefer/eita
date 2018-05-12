@@ -2,6 +2,7 @@
 Contains common used functions necessary for different modules
 """
 
+import numpy as np
 import ev_track_columns as etcol
 import os
 
@@ -81,6 +82,20 @@ def parsec_filename(path, Z, Y, mass, HB = False):
 
     return None
 
+def parsec_isoc_filename(Z, age):
+    Z_value = "{:7.5f}".format(Z)[2:]
+    t_value = "{:6.3f}".format(age/1e9)
+
+    # Remove possible empty " "
+    t_value = t_value.split(" ")
+    try:
+        t_value.remove("")
+    except ValueError:
+        pass
+
+    t_value = "".join(t_value)
+
+    return "PARSEC_Z{0}t{1}e9.dat".format(Z_value, t_value)
 
 def parsec_directory(Z, Y):
     """
@@ -92,6 +107,39 @@ def parsec_directory(Z, Y):
     Y_fmt = str(round(Y,3))
     
     return "Z{:s}Y{:s}".format(Z_fmt, Y_fmt)
+
+
+def get_PARSEC_masses(Z, path):
+    """
+
+    :param Z:
+    :param path:
+    :return:
+    """
+
+    Y = abundanceY(Z)
+    fullpath = path + '/' + parsec_directory(Z,Y)
+
+    filenames = os.listdir(fullpath)
+
+    files = []
+    for filename in filenames:
+        if 'HB' not in filename:
+            files.append(filename)
+
+    M = []
+    # The mass in the filename is what comes after M and before .HB, so:
+    for file in files:
+        M.append(float(file.split('M')[1][:7]))
+
+    # Sorting masses
+    M.sort()
+
+    # Converting to array
+    M = np.array(M)
+
+    return M
+
 
 def get_PARSEC_HB_masses(Z, path):
     """
@@ -116,4 +164,17 @@ def get_PARSEC_HB_masses(Z, path):
     for HB_file in HB_files:
         M.append(float(HB_file.split('M')[1].split('.HB')[0]))
 
+    # Sorting masses
+    M.sort()
+
+    # Converting to array
+    M = np.array(M)
+
     return M
+
+################################################################################
+# Custom errors to raise
+
+class LoadingError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)

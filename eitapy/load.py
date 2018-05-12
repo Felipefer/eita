@@ -15,7 +15,7 @@ import ev_track_columns as etcol
 
 ################################################################################
 
-allowed_models = ['PARSEC']
+allowed_models = ['PARSEC', 'PARSEC_ISOC_1_2']
 
 _columns_parsec = [etcol.mass, etcol.age, etcol.log_L, etcol.log_Teff,
                    etcol.log_R, etcol.mdot, etcol.he_core_mass,
@@ -34,6 +34,13 @@ _columns["PARSEC"] = [etcol.mass, etcol.age, etcol.log_L, etcol.log_Teff,
                       etcol.LHe_frac, etcol.LC_frac, etcol.LNeutr_frac,
                       etcol.Lgrav_frac, etcol.surf_H, etcol.surf_He,
                       etcol.surf_C, etcol.surf_N, etcol.surf_O, etcol.phase]
+
+_columns["PARSEC_ISOC_1_2"] = [etcol.Z, etcol.log_age, etcol.initial_mass,
+                               etcol.mass, etcol.log_L, etcol.log_Teff,
+                               etcol.log_g, etcol.mag_bol, etcol.magU,
+                               etcol.magB, etcol.magV, etcol.magR, etcol.magI,
+                               etcol.magJ, etcol.magH, etcol.magK,
+                               etcol.int_IMF, etcol.phase]
 
 _columns["MESA"] = []
 
@@ -121,7 +128,7 @@ class LoadedEvolutionaryTrack(object):
             self._load_from_array(array, columns)
             self.loaded = True
 
-    def _load_from_array(self, ev_track_data, columns):
+    def _load_from_array(self, track_data, columns):
         """
         used internally to load evolutionary track from an array
 
@@ -138,7 +145,7 @@ class LoadedEvolutionaryTrack(object):
         # Loading columns data as attributes
         for i in range(len(columns)):
             col = columns[i]
-            value = ev_track_data[:, i]
+            value = track_data[:, i]
             self.__setattr__(col.name, value)
             self.column_names.append(col.name)
 
@@ -165,7 +172,7 @@ class LoadedEvolutionaryTrack(object):
 
         # Load model file into ev_track_data
         # \todo check what to do with skiprows
-        ev_track_data = np.loadtxt(filepath, skiprows=1)
+        track_data = np.loadtxt(filepath, skiprows=1)
 
         # Columns that are present in the PARSEC tracks
         columns = _columns[model]
@@ -175,7 +182,7 @@ class LoadedEvolutionaryTrack(object):
 
         # Loading columns data as attributes
         for col in columns:
-            value = ev_track_data[:, col.model[model]["id"]]
+            value = track_data[:, col.model[model]["id"]]
             self.__setattr__(col.name, value)
             self.column_names.append(col.name)
 
@@ -194,9 +201,9 @@ class LoadedEvolutionaryTrack(object):
         if HB:
             if model == "PARSEC":
                 if self.column_names[-1] == 'phase':
-                    ev_track_data[:,-1] = ev_track_data[:,-1]+11
+                    track_data[:,-1] = track_data[:,-1]+11
 
-    def _get_full_filepath(self, model, path, HB=False):
+    def _get_full_filepath(self, model, path, filename = None, HB=False):
         """
         used internally. Returns filepath (path + directory + filename) for each
         model
@@ -212,6 +219,13 @@ class LoadedEvolutionaryTrack(object):
                                          Y=self.Y)
 
             filepath = path + '/' + directory + '/' + filename
+            return filepath
+
+        elif model == "PARSEC_ISOC_1_2":
+            if filename is None:
+                filename = utils.parsec_isoc_filename(Z = self.Z,
+                                                      age = self.age)
+            filepath = path + '/' + filename
             return filepath
 
         elif model == "MESA":
@@ -262,6 +276,36 @@ class LoadedEvolutionaryTrack(object):
                     self.column_fmt[col.name] = col.fmt
                 except AttributeError:
                     self.column_fmt[col.name] = "% 9.5f"
+
+
+class LoadedIsochrone(LoadedEvolutionaryTrack):
+    """
+    The class used to load Isochrones inherits the methods of the
+    LoadedEvolutionaryTrack class. This is made possible because both data
+    are very similar. The only change is that the initial mass is the quantity
+    conserved in an evolutionary track, while in an Isochrone it's the age that
+    is the same for all points.
+    """
+
+    def __init__(self, age, Z, model = "Not_Assigned",
+                 auto_load = True, path = None, array = None,
+                 columns = None):
+        """
+        :param model: Isochrone model
+        """
+
+        self.loaded = False
+
+        self.age = age
+        self.Z = Z
+
+        # Calculate Helium abundances
+        self.Y = np.around(utils.abundanceY(Z), 3)
+
+        self.model = model
+
+        if auto_load:
+            self.load(path=path, array=array, columns=columns)
 
 ################################################################################
 

@@ -306,28 +306,49 @@ if __name__ == "__main__":
         test_EvTrack_MassSet_array_age_beg_phase()
 
 
-def test_EvTrack_MassSet_include_HB():
-    Z = 0.017
-    M = [0.950, 1.000, 1.050]
-
-    model = "PARSEC"
-
+def get_tracks_path():
     if socket.gethostname() == 'Bravos':
         if getpass.getuser() == 'felipe':
             path = '/home/felipe/Documents'
+    elif socket.gethostname() == 'Valyria':
+        if getpass.getuser() == 'felipe':
+            path = '/home/felipe/Evolutionary_Tracks/Original'
     elif socket.gethostname() == 'winterfell':
         if getpass.getuser() == 'felipe':
             path = '/home/felipe/Evolutionary_Tracks/Original'
 
+    return path
+
+
+def load_default_EvTrack_MassSet():
+    Z = 0.017
+    M = [0.950, 1.000, 1.050]
+    phase = EvTrack.default_interp_phase['PARSEC']
+    model = "PARSEC"
+    path = get_tracks_path()
+
     Set = EvTrack.EvTrack_MassSet(Z=Z,
                                   M=M,
                                   model=model,
-                                  phase = np.linspace(0, 15,0.01)[1:],
+                                  phase=phase,
                                   path=path)
 
+    return Set
+
+
+def test_EvTrack_MassSet_include_HB():
+    path = get_tracks_path()
+
+    print "Loading Ev_track Set"
+    Set = load_default_EvTrack_MassSet()
+
+    print "Ev_track Set loaded"
     Set.plot('log_Teff', 'log_L', c='red', label = 'Original')
 
+    print "Running include_HB method"
     Set.include_HB(path = path)
+    print "include_HB completed"
+
     Set.plot('log_Teff', 'log_L', c='blue', linestyle='--', label = 'HB added')
 
     plt.gca().invert_xaxis()
@@ -340,3 +361,231 @@ if __name__ == "__main__":
 
     if run in ('Y', 'y'):
         test_EvTrack_MassSet_include_HB()
+
+
+def test_EvTrack_MassSet_get_phase_completeness():
+    path = get_tracks_path()
+
+    print "Loading Ev_track Set"
+    Set = load_default_EvTrack_MassSet()
+    Set_completeness = Set.get_phase_completeness(plot = True,
+                                                  color = 'blue',
+                                                  zorder = 1,
+                                                  alpha = 0.5,
+                                                  markersize = 10,
+                                                  label = "Without HB")
+
+    print "Including HB"
+    Set_with_HB = copy.deepcopy(Set)
+    Set_with_HB.include_HB(path=path)
+    Set_with_HB_completeness = Set_with_HB.get_phase_completeness(plot = True,
+                                                            color = 'red',
+                                                            zorder = 0,
+                                                            markersize = 20,
+                                                            label = "With HB")
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_MassSet_get_phase_completeness? "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_MassSet_get_phase_completeness()
+
+
+def test_EvTrack_MassSet_load_large_Set():
+    Z = 0.017
+    phase = EvTrack.default_interp_phase['PARSEC']
+    model = "PARSEC"
+    path = get_tracks_path()
+    M = EvTrack.utils.get_PARSEC_masses(Z = Z, path = path)
+
+    # Loading Evolutionary tracks
+    print "Loading Evolutionary Tracks"
+    Set = EvTrack.EvTrack_MassSet(Z=Z,
+                                  M=M,
+                                  model=model,
+                                  phase=phase,
+                                  path=path)
+
+    print "plotting Evolutionary Tracks"
+    Set.plot("log_Teff", "log_L", color = 'blue', zorder = 1)
+
+    # Include HB
+    print "Including HB"
+    Set_with_HB = copy.deepcopy(Set)
+    Set_with_HB.include_HB(path = path)
+
+    print "plotting Evolutionary Tracks with HB"
+    Set_with_HB.plot("log_Teff", "log_L", color='red', zorder=0)
+    plt.gca().invert_xaxis()
+    plt.show()
+
+    # Plot completeness
+    Set.get_phase_completeness(plot = True,
+                               color = 'blue',
+                               zorder = 1,
+                               markersize = 10)
+    Set_with_HB.get_phase_completeness(plot = True,
+                               color = 'red',
+                               zorder = 0,
+                               markersize = 20)
+    plt.show()
+
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_MassSet_load_large_Set? "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_MassSet_load_large_Set()
+
+
+def test_EvTrack_MassSet_compare_interpolation_times(plot_steps = False):
+    Z = 0.017
+    phase = EvTrack.default_interp_phase['PARSEC']
+    model = "PARSEC"
+    path = get_tracks_path()
+    M = EvTrack.utils.get_PARSEC_masses(Z = Z, path = path)
+
+    M_interp = [np.linspace(0.7, 2.0, 100),
+                np.linspace(0.7, 2.0, 500),
+                np.linspace(0.7, 2.0, 1000),
+                np.linspace(0.7, 2.0, 5000)]
+
+    N_masses = [100, 500, 1000, 5000]
+
+    # Loading Evolutionary tracks
+    print "Loading Evolutionary Tracks"
+    Set = EvTrack.EvTrack_MassSet(Z=Z,
+                                  M=M,
+                                  model=model,
+                                  phase=phase,
+                                  path=path)
+
+    #Set_with_HB = copy.deepcopy(Set)
+    #Set_with_HB.include_HB(path=path)
+
+    # Calculating interpolation times for the Set without HB
+    interp_time_without_HB = []
+
+    print "Calculating interpolation times without HB"
+    for Mlist in M_interp:
+        print "interpolating {N} masses".format(N = len(Mlist))
+
+        # Make a copy of the Set
+        Set_interp = copy.deepcopy(Set)
+
+        # Interpolate
+        t0 = time()
+        Set_interp.interp_mass(Mlist)
+        tf = time()
+
+        # Save time
+        interp_time_without_HB.append(tf-t0)
+
+        if plot_steps:
+            Set_interp.plot('log_Teff', 'log_L')
+            plt.gca().invert_xaxis()
+            plt.show()
+
+    # Calculating interpolation times for the Set with HB previously added
+    interp_time_with_HB_previously = []
+
+    print "Calculating interpolation times for previously added HB"
+    for Mlist in M_interp:
+        print "interpolating {N} masses".format(N = len(Mlist))
+
+        # Make a copy of the Set
+        Set_interp = copy.deepcopy(Set)
+
+        # Interpolate
+        Set_interp.include_HB(path = path)
+        t0 = time()
+        Set_interp.interp_mass(Mlist)
+        tf = time()
+
+        # Save time
+        interp_time_with_HB_previously.append(tf-t0)
+
+        if plot_steps:
+            Set_interp.plot('log_Teff', 'log_L')
+            plt.gca().invert_xaxis()
+            plt.show()
+
+    print interp_time_with_HB_previously
+
+    # Calculating interpolation times for the Set with HB
+    interp_time_with_HB_before = []
+
+    print "Calculating interpolation times adding HB before interpolation"
+    for Mlist in M_interp:
+        print "interpolating {N} masses".format(N = len(Mlist))
+
+        # Make a copy of the Set
+        Set_interp = copy.deepcopy(Set)
+
+        # Interpolate
+        t0 = time()
+        Set_interp.include_HB(path = path)
+        Set_interp.interp_mass(Mlist)
+        tf = time()
+
+        # Save time
+        interp_time_with_HB_before.append(tf-t0)
+
+        if plot_steps:
+            Set_interp.plot('log_Teff', 'log_L')
+            plt.gca().invert_xaxis()
+            plt.show()
+
+    print interp_time_with_HB_before
+
+    # Calculating interpolation times for the Set with HB after
+    interp_time_with_HB_after = []
+
+    print "Calculating interpolation times adding HB after interpolation"
+    for Mlist in M_interp:
+        print "interpolating {N} masses".format(N = len(Mlist))
+
+        # Make a copy of the Set
+        Set_interp = copy.deepcopy(Set)
+
+        # Interpolate
+        t0 = time()
+        Set_interp.interp_mass(Mlist)
+        Set_interp.include_HB(path=path)
+        tf = time()
+
+        # Save time
+        interp_time_with_HB_after.append(tf-t0)
+
+        if plot_steps:
+            Set_interp.plot('log_Teff', 'log_L')
+            plt.gca().invert_xaxis()
+            plt.show()
+
+    print interp_time_with_HB_after
+
+    # Plot results
+    plt.plot(N_masses, interp_time_without_HB, color = 'red',
+             label = "without HB")
+    plt.plot(N_masses, interp_time_with_HB_previously, color = 'green',
+             label = "with HB previously")
+    plt.plot(N_masses, interp_time_with_HB_before, color = 'blue',
+             label = "with HB before")
+    plt.plot(N_masses, interp_time_with_HB_after, color = 'black',
+             label = "with HB after")
+
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_compare_interpolation_times? "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_MassSet_compare_interpolation_times()
+
+#\todo write test_EvTrack_MassSet_interp_phase

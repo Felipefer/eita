@@ -69,7 +69,22 @@ class Ev_track_column(object):
 # given that the column name is known
 columns = {}
 
-# Should be imported and used as et_col.age
+# Should be imported and used as et_col.Z
+Z = Ev_track_column(name        = "Z",
+                    description = "metallicity of the star",
+                    unit        = "",
+                    log         = False,
+                    fmt         = "%8.6f")
+
+Z.add_model_info("PARSEC_ISOC_1_2",
+                 name = "Z",
+                 id = 0,
+                 fmt = "%8.6f")
+
+columns[Z.name] = Z
+
+################################################################################
+
 age = Ev_track_column(name        = "age",
                       description = "age of the star",
                       unit        = "years",
@@ -90,6 +105,11 @@ log_age = Ev_track_column(name        = "log_age",
                           unit        = "years",
                           log         = True)
 
+log_age.add_model_info("PARSEC_ISOC_1_2",
+                       name = "log(age/yr)",
+                       id = 1,
+                       fmt = "%7.4f")
+
 columns[log_age.name] = log_age
 
 #\TODO include way to know these quantities are related
@@ -100,6 +120,11 @@ initial_mass = Ev_track_column(name        = "initial_mass",
                                unit        = "M_sun",
                                log         = False,
                                fmt="%7.3f")
+
+initial_mass.add_model_info("PARSEC_ISOC_1_2",
+                            name = "M_ini",
+                            id = 2,
+                            fmt = "%10.8f")
 
 columns[initial_mass.name] = initial_mass
 
@@ -115,6 +140,10 @@ mass.add_PARSEC_info(PARSEC_col_name = "MASS",
                      PARSEC_col_id   = 1)
 
 mass.add_model_info("PARSEC", name = "MASS", id = 1)
+mass.add_model_info("PARSEC_ISOC_1_2",
+                    name = "M_act",
+                    id = 3,
+                    fmt = "%6.4f")
 
 columns[mass.name] = mass
 
@@ -130,6 +159,10 @@ log_L.add_PARSEC_info(PARSEC_col_name = "LOG_L",
                       PARSEC_col_id   = 3)
 
 log_L.add_model_info("PARSEC", name = "LOG_L", id = 3)
+log_L.add_model_info("PARSEC_ISOC_1_2",
+                     name = "logL/Lo",
+                     id = 4,
+                     fmt = "%6.4f")
 
 columns[log_L.name] = log_L
 
@@ -145,8 +178,27 @@ log_Teff.add_PARSEC_info(PARSEC_col_name = "LOG_TE",
                          PARSEC_col_id   = 4)
 
 log_Teff.add_model_info("PARSEC", name = "LOG_Teff", id = 4)
+log_Teff.add_model_info("PARSEC_ISOC_1_2",
+                        name = "logTe",
+                        id = 5,
+                        fmt = "%6.4f")
 
 columns[log_Teff.name] = log_Teff
+
+################################################################################
+
+mag_bol = Ev_track_column(name        = "mag_abs",
+                          description = "Bolometric absolute magnitude",
+                          unit        = "",
+                          log         = False,
+                          fmt         = "%8.5f")
+
+mag_bol.add_model_info("PARSEC_ISOC_1_2",
+                       name = "mbol",
+                       id = 7,
+                       fmt = "%6.3f")
+
+columns[mag_bol.name] = mag_bol
 
 ################################################################################
 
@@ -396,6 +448,11 @@ log_g = Ev_track_column(name        = "log_g",
                         unit        = "cm s-2",
                         log         = True)
 
+log_g.add_model_info("PARSEC_ISOC_1_2",
+                     name = "logG",
+                     id = 6,
+                     fmt = "%6.4f")
+
 columns[log_g.name] = log_g
 
 ################################################################################
@@ -517,6 +574,132 @@ columns[surf_O.name] = surf_O
 
 ################################################################################
 
+magU = Ev_track_column(name        = "magU",
+                       description = "Absolute magnitude in the U band",
+                       unit        = "",
+                       log         = False)
+
+magU.add_model_info("PARSEC_ISOC_1_2",
+                     name = "U",
+                     id = 8,
+                     fmt = "%6.3f")
+
+columns[magU.name] = magU
+
+################################################################################
+
+magB = Ev_track_column(name        = "magB",
+                       description = "Absolute magnitude in the B band",
+                       unit        = "",
+                       log         = False)
+
+magB.add_model_info("PARSEC_ISOC_1_2",
+                     name = "B",
+                     id = 9,
+                     fmt = "%6.3f")
+
+columns[magB.name] = magB
+
+################################################################################
+
+magV = Ev_track_column(name        = "magV",
+                       description = "Absolute magnitude in the V band",
+                       unit        = "",
+                       log         = False)
+
+magV.add_model_info("PARSEC_ISOC_1_2",
+                     name = "V",
+                     id = 10,
+                     fmt = "%6.3f")
+
+columns[magV.name] = magV
+
+################################################################################
+
+magR = Ev_track_column(name        = "magR",
+                       description = "Absolute magnitude in the R band",
+                       unit        = "",
+                       log         = False)
+
+magR.add_model_info("PARSEC_ISOC_1_2",
+                     name = "R",
+                     id = 11,
+                     fmt = "%6.3f")
+
+columns[magR.name] = magR
+
+################################################################################
+
+magI = Ev_track_column(name        = "magI",
+                       description = "Absolute magnitude in the I band",
+                       unit        = "",
+                       log         = False)
+
+magI.add_model_info("PARSEC_ISOC_1_2",
+                     name = "I",
+                     id = 12,
+                     fmt = "%6.3f")
+
+columns[magI.name] = magI
+
+################################################################################
+
+magJ = Ev_track_column(name        = "magJ",
+                       description = "Absolute magnitude in the J band",
+                       unit        = "",
+                       log         = False)
+
+magJ.add_model_info("PARSEC_ISOC_1_2",
+                     name = "J",
+                     id = 13,
+                     fmt = "%6.3f")
+
+columns[magJ.name] = magJ
+
+################################################################################
+
+magH = Ev_track_column(name        = "magH",
+                       description = "Absolute magnitude in the H band",
+                       unit        = "",
+                       log         = False)
+
+magH.add_model_info("PARSEC_ISOC_1_2",
+                     name = "H",
+                     id = 14,
+                     fmt = "%6.3f")
+
+columns[magH.name] = magH
+
+################################################################################
+
+magK = Ev_track_column(name        = "magK",
+                       description = "Absolute magnitude in the U band",
+                       unit        = "",
+                       log         = False)
+
+magK.add_model_info("PARSEC_ISOC_1_2",
+                     name = "K",
+                     id = 15,
+                     fmt = "%6.3f")
+
+columns[magK.name] = magK
+
+################################################################################
+
+int_IMF = Ev_track_column(name        = "int_IMF",
+                          description = "",
+                          unit        = "",
+                          log         = False)
+
+int_IMF.add_model_info("PARSEC_ISOC_1_2",
+                       name = "int_IMF",
+                       id = 16,
+                       fmt = "%10.8f")
+
+columns[int_IMF.name] = int_IMF
+
+################################################################################
+
 # \WARNING different track sets may use different phases definition.
 # Use for the columns PARSEC_phase, MIST_phase, etc.
 
@@ -529,5 +712,6 @@ phase.add_PARSEC_info(PARSEC_col_name = "PHASE",
                       PARSEC_col_id   = 23)
 
 phase.add_model_info("PARSEC", name = "PHASE", id = 23)
+phase.add_model_info("PARSEC_ISOC_1_2", name = "stage", id = -1)
 
 columns[phase.name] = phase

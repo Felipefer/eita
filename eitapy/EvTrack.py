@@ -1493,6 +1493,7 @@ class EvTrack_ZSet(object):
 
             self.array = array
 
+        #\todo add elifs to load from file and from data
 
     def _check_if_all_needed_info_is_given(self, EvTrack_MassSet_list = None,
                                            Z = None, M = None, phase = None,
