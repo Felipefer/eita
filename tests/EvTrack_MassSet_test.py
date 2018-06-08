@@ -172,6 +172,41 @@ if __name__ == "__main__":
     if run in ('Y', 'y'):
         test_EvTrack_MassSet_interp_mass()
 
+def test_EvTrack_MassSet_interp():
+    Z = 0.017
+    M = [0.950, 1.000, 1.050]
+
+    model = "PARSEC"
+    path = _parsec_tests_tracks_path
+
+    Set = EvTrack.EvTrack_MassSet(Z=Z, M=M, model=model, path=path)
+    fmt = ['r-', 'r-', 'r-']
+    for m in range(len(Set.M)):
+        plt.plot(Set.array[m, :, 3], Set.array[m, :, 2], fmt[m],
+                 label = M[m])
+
+    M_new = [0.950, 0.975, 1.000, 1.025, 1.050]
+    phase_new = np.linspace(0, 7, 5000)
+    print "Interpolating new masses and phases"
+    t0 = time()
+    Set.interp(M_new, phase_new)
+    print "Interpolation took {0} seconds.".format(time()-t0)
+
+    fmt = ['g-', 'g-', 'g-', 'g-', 'g-']
+    for m in range(len(Set.M)):
+        plt.plot(Set.array[m, :, 3], Set.array[m, :, 2], fmt[m],
+                 label = M_new[m])
+
+    plt.legend()
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_MassSet_interp() "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_MassSet_interp()
 
 def test_EvTrack_MassSet_getitem():
     Z = 0.017

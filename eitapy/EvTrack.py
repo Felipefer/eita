@@ -913,6 +913,46 @@ class EvTrack_MassSet(object):
                 if record_interp_function:
                     self._interp_mass_function = interp_function
 
+    def interp(self, M, phase = None, new_object = False,
+                    record_interp_function = True, **kargs):
+        """
+        Interpolates the evolutionary track set for the given list of masses M
+
+        :param phase: list of phases to interpolate
+        :param M: list of masses to interpolate
+
+        also accepts any keyword argument for the function interp1d from the
+        scipy.interpolate module
+        """
+
+        # If a new EvTrack Set is to be created, copy, evaluate and return it
+        if new_object:
+            new_set = copy.deepcopy(self)
+            new_set.interp(M=M, phase=phase, new_object=False, **kargs)
+
+            return new_set
+
+        # Otherwise, only evaluate
+        else:
+            if phase is None:
+                phase = self.phase
+
+            # If interpolation function is recorded, use it, but only if phase
+            # is None or equal to self.phase.
+            if phase == self.phase:
+                if self._interp_mass_function is not None:
+                    self.interp_mass(M, new_object = False,
+                                     record_interp_function = False,
+                                     **kargs)
+            # If interpolation function will not be used, perform interpolation
+            else:
+                # First interpolate phase
+                self.interp_phase(phase, new_object=False, **kargs)
+                # Then interpolate mass
+                self.interp_mass(M, new_object = False,
+                                 record_interp_function=record_interp_function,
+                                 **kargs)
+
     def plot(self, xcol, ycol, M = None, **kargs):
 
         """
@@ -1147,9 +1187,9 @@ class EvTrack_MassSet(object):
                 try:
                     # Try to get default model phases
                     self.phase = default_interp_phase[self.model]
-                    print self.model
-                    print self.phase
-                    print default_interp_phase['PARSEC']
+                    #print self.model
+                    #print self.phase
+                    #print default_interp_phase['PARSEC']
 
                 except:
                     raise ValueError("Could not assign phase attribute.")
@@ -1468,12 +1508,12 @@ class EvTrack_ZSet(object):
 
             # if columns is None, get it from reference object
             if columns is None:
-                self.columns = refEvTrack_MassSet.column_names
+                self.columns = refEvTrack_MassSet.columns
             else:
                 self.columns = columns
 
             # Get phase
-                self.phase = refEvTrack_MassSet.phase
+            self.phase = refEvTrack_MassSet.phase
 
             # Generate self.array
             array = np.empty((len(self.Z), len(self.M),
@@ -1486,14 +1526,237 @@ class EvTrack_ZSet(object):
                 EvTrack_MassSet_tmp = EvTrack_MassSet_list[i]
                 if EvTrack_MassSet_tmp.M != self.M:
                     EvTrack_MassSet_tmp.interp_mass(self.M)
-                if EvTrack_MassSet_tmp.phase != self.phase:
+                if list(EvTrack_MassSet_tmp.phase) != list(self.phase):
                     EvTrack_MassSet_tmp.interp_phase(self.phase)
 
                 array[i,:,:,:] = EvTrack_MassSet_tmp.array
 
             self.array = array
 
-        #\todo add elifs to load from file and from data
+
+        elif self.load_info_is_provided:
+
+            # Get reference EvTrack
+            refEvTrack = EvTrack(mass=M[0], Z=Z[0], path=path, model=model)
+
+            # self.Z is given by entry parameter
+            self.Z = list(Z)
+            self.Y = utils.abundanceY(Z)
+
+            # self.M is given by entry parameter
+            self.M = list(M)
+
+            # self.model is given by entry parameter
+            self.model = model
+
+            # phase is given by entry parameter, or taken from reference, or
+            # taken from default value for model.
+            self._prepare_phase_parameter(refEvTrack=refEvTrack,
+                                          phase=phase, array=array,
+                                          columns=columns)  # Sets self.phase
+
+            # if columns is None, get it from reference object
+            if columns is None:
+                self.columns = refEvTrack.column_names
+            else:
+                self.columns = columns
+
+            # Generate self.array
+            array = np.empty((len(self.Z), len(self.M),
+                              len(self.phase), len(self.columns)))
+            array[:] = np.nan
+
+            # Fill the array
+            for i in range(len(self.Z)):
+                # Check if MassSet masses and phases are the same as self
+                EvTrack_MassSet_tmp = EvTrack_MassSet(Z = Z[i],
+                                                      M = M,
+                                                      model = model,
+                                                      path = path)
+                if EvTrack_MassSet_tmp.M != self.M:
+                    EvTrack_MassSet_tmp.interp_mass(self.M)
+                if list(EvTrack_MassSet_tmp.phase) != list(self.phase):
+                    EvTrack_MassSet_tmp.interp_phase(self.phase)
+
+                array[i, :, :, :] = EvTrack_MassSet_tmp.array
+
+            self.array = array
+
+        elif self.array_is_provided:
+
+            # self.Z is given by entry parameter
+            self.Z = Z
+            self.Y = utils.abundanceY(Z)
+
+            # self.M is given by entry parameter
+            self.M = M
+
+            # self.model is given by entry parameter
+            self.model = model
+
+            # self.columns is given by entry parameter
+            self.columns = np.array(columns)
+
+            # phase is given by entry parameter, or taken from reference, or
+            # taken from default value for model.
+            self.phase = None
+            self._prepare_phase_parameter(refEvTrack=None,
+                                          phase=None, array=array,
+                                          columns=self.columns)  # Sets self.phase.
+            if self.phase is None:
+                raise AttributeError("self.phase could not be attributed.")
+
+            # Check if the shape of the array matches the given data
+            array_error_message = ("The given array has a different number of "
+                                 "dimensions compared to the number of {0} "
+                                 "provided.")
+
+            if array.shape[0] != len(Z):
+                raise ValueError(array_error_message.format("Z"))
+
+            if array.shape[1] != len(M):
+                raise ValueError(array_error_message.format("masses"))
+
+            if array.shape[2] != len(self.phase):
+                raise ValueError(array_error_message.format("phases"))
+
+            if array.shape[3] != len(columns):
+                raise ValueError(array_error_message.format("columns"))
+
+            self.array = array
+
+        # Attribute that stores the Z interpolation when it
+        # has already been calculated before.
+        self._interp_Z_function = None
+
+    def __getitem__(self, i):
+        """
+        self.__getitem__ returns the EvTrack_MassSet object which has mass
+        self.Z[i]
+        """
+
+        #\todo check what needs to change for it to work with a single Z in
+        # self.Z
+
+        # Get the array for the EvTrack_MassSet
+        array_i = self.array[i, :, :, :]
+
+        # Create the evtrack_massset_i
+        evtrack_massset_i = EvTrack_MassSet(Z = self.Z[i],
+                                            M = self.M,
+                                            model = self.model,
+                                            columns = self.columns,
+                                            array = array_i)
+
+        # Return the EvTrack_MassSet object of Z = self.Z[i]
+        return evtrack_massset_i
+
+    def __iter__(self):
+        """
+        Iterates the set returning one EvTrack_MassSet at a time
+        """
+
+        for i in range(len(self.Z)):
+            evtrack_massset_i = self[i]
+            yield evtrack_massset_i
+
+    def interp_mass_and_phase(self, M, phase = None, new_object = False, **kargs):
+        """
+        Interpolates the evolutionary track set for the given list of masses M
+        for each value of Z
+
+        :param M: list of masses to interpolate
+
+        also accepts any keyword argument for the function interp1d from the
+        scipy.interpolate module
+        """
+
+        # If a new EvTrack Set is to be created, copy, evaluate and return it
+        if new_object:
+            new_set = copy.deepcopy(self)
+            new_set.interp(M=M, phase=phase, new_object = False, **kargs)
+
+            return new_set
+
+        # Otherwise, only evaluate
+        else:
+            if phase is None:
+                phase = self.phase
+
+            # Create empty array to receive interpolated data
+            interp_array = np.empty((self.array.shape[0],
+                                     len(M),
+                                     len(phase),
+                                     self.array.shape[3]))
+
+            # Perform interpolation for each value of Z and fill the array
+            for i in range(len(self.Z)):
+
+                # Get EvTrack_MassSet for the value of self.Z[i]
+                evtrack_massset_i = self[i]
+
+                # Interpolate this EvTrack_MassSet
+                evtrack_massset_i.interp(M=M, phase=phase)
+
+                # Write interpolated data to the created array
+                interp_array[i, :, :, :] = evtrack_massset_i.array
+
+            # Update self.array and self.M
+            self.array = interp_array
+            self.M = M
+
+    def interp_Z(self, Z, new_object = False, record_interp_function = True,
+                 **kargs):
+        """
+        Interpolates the evolutionary track set for the given list of masses M
+
+        :param Z: list of masses to interpolate
+
+        also accepts any keyword argument for the function interp1d from the
+        scipy.interpolate module
+        """
+
+        # If a new EvTrack Set is to be created, copy, evaluate and return it
+        if new_object:
+            new_set = copy.deepcopy(self)
+            new_set.interp_Z(Z=Z, new_object = False, **kargs)
+
+            return new_set
+
+        # Otherwise, only evaluate
+        else:
+            # If interpolation function is recorded, use it.
+            if self._interp_Z_function is not None:
+                self.array = self._interp_Z_function(Z)
+                self.Z = Z
+
+            else:
+                # Create the interpolation function
+                interp_function = interp1d(x=self.Z,
+                                           y=self.array,
+                                           axis=0,
+                                           bounds_error=False,
+                                           fill_value=np.nan,
+                                           **kargs)
+
+                self.array = interp_function(Z)
+                self.Z = Z
+
+                if record_interp_function:
+                    self._interp_Z_function = interp_function
+
+
+    def plot(self, xcol, ycol, Z = None, M = None, **kargs):
+        """
+        """
+
+        if Z is None:
+            Z = self.Z
+
+        if M is None:
+            M = self.M
+
+        #\todo finish after defining all interpolations
 
     def _check_if_all_needed_info_is_given(self, EvTrack_MassSet_list = None,
                                            Z = None, M = None, phase = None,
@@ -1578,10 +1841,57 @@ class EvTrack_ZSet(object):
             # If it gets here
             load_info_is_provided = True
 
-        self.EvTrack_list_is_provided = EvTrack_MassSet_list_is_provided
+        self.EvTrack_MassSet_list_is_provided = EvTrack_MassSet_list_is_provided
         self.array_is_provided = array_is_provided
         self.load_info_is_provided = load_info_is_provided
 
+    def _prepare_phase_parameter(self, refEvTrack=None, phase=None,
+                                 array=None, columns=None):
+        """
+        Used internally to set which values will be used for phase if it is not
+        provided by the user.
+        """
+        if phase is not None:
+            if utils.isiterable(phase):
+                self.phase = phase
+            else:
+                raise ValueError("Phase parameter must be iterable.")
+
+        else:
+            if self.EvTrack_MassSet_list_is_provided:
+                # # Try to get the phases from the first object in the list
+                # try:
+                #     self.phase = refEvTrack.phase
+                #
+                # except:
+                try:
+                    # Try to get default model phases
+                    self.phase = default_interp_phase[self.model]
+
+                except:
+                    raise ValueError("Could not assign phase attribute.")
+
+            elif self.array_is_provided:
+                # Try to get the phases from the first object in the array
+                try:
+                    self.phase = array[0, 0, :, columns == 'phase'][0]
+                except:
+                    try:
+                        # Try to get default model phases
+                        self.phase = default_interp_phase[self.model]
+
+                    except:
+                        raise ValueError("Could not assign phase attribute.")
+
+            elif self.load_info_is_provided:
+                # try:
+                #     self.phase = refEvTrack.phase
+                # except:
+                try:
+                    # Try to get default model phases
+                    self.phase = default_interp_phase[self.model]
+                except:
+                    raise ValueError("Could not assign phase attribute.")
         ########################################################################
 
 

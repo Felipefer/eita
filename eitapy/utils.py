@@ -12,8 +12,10 @@ def abundanceY(Z):
     :param Z: metallicity
     :return: Y abundance scaled for a given metallicity Z.
     """
-    return 0.2485 + 1.78*Z
+    if type(Z) is list:
+        Z = np.array(Z)
 
+    return 0.2485 + 1.78*Z
 
 def isiterable(x):
     """
