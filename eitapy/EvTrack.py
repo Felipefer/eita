@@ -1629,6 +1629,10 @@ class EvTrack_ZSet(object):
         # has already been calculated before.
         self._interp_Z_function = None
 
+        # Transform M and Z to arrays
+        self.M = np.array(self.M)
+        self.Z = np.array(self.Z)
+
     def __getitem__(self, i):
         """
         self.__getitem__ returns the EvTrack_MassSet object which has mass
@@ -1746,17 +1750,135 @@ class EvTrack_ZSet(object):
                     self._interp_Z_function = interp_function
 
 
-    def plot(self, xcol, ycol, Z = None, M = None, **kargs):
+    def interp(self, Z, M = None, phase = None, new_object = False,
+               record_interp_function=True, **kargs):
+        """
+        Interpolates the evolutionary track set for the given list of Z, M and
+        phase
+
+        :param phase: list of phases to interpolate
+        :param M: list of masses to interpolate
+        :param Z: list of Z to interpolate
+
+        also accepts any keyword argument for the function interp1d from the
+        scipy.interpolate module
+        """
+
+        # If a new EvTrack Set is to be created, copy, evaluate and return it
+        if new_object:
+            new_set = copy.deepcopy(self)
+            new_set.interp(Z=Z, M=M, phase=phase, new_object=False, **kargs)
+
+            return new_set
+
+        else:
+            # First prepare input variables
+            Z = self.Z if (Z is None) else np.array(Z)
+            M = self.M if (M is None) else np.array(M)
+            phase = self.phase if (phase is None) else np.array(phase)
+
+            # Interpolate mass and phase if necessary
+            if np.array_equal(M,self.M) or np.array_equal(phase,self.phase):
+                self.interp_mass_and_phase(M=M,
+                                           phase=phase,
+                                           new_object=False, **kargs)
+                # if Mass and phase are interpolated, reset Z interp function
+                self.interp_Z_function = None
+
+            # Then interpolate Z
+            self.interp_Z(Z, new_object = False,
+                             record_interp_function=record_interp_function,
+                             **kargs)
+
+    def plot(self, xcol, ycol, Z = None, M = None, phase = None,
+             Zcolor = None, **kargs):
         """
         """
 
-        if Z is None:
-            Z = self.Z
+        Z = self.Z if (Z is None) else np.array(Z)
 
-        if M is None:
-            M = self.M
+        # Create new evtrack with only the data chosen for ploting:
+        evtrack_zset_plot = self.interp(Z = Z, M = M,
+                                        phase = phase,
+                                        new_object=True)
 
-        #\todo finish after defining all interpolations
+        # Plot
+        if Zcolor is not None:
+            for ev_track_massset_i, col_i in zip(evtrack_zset_plot, Zcolor):
+                ev_track_massset_i.plot(xcol=xcol, ycol=ycol, color = col_i,
+                                    **kargs)
+        else:
+            for ev_track_massset_i in evtrack_zset_plot:
+                ev_track_massset_i.plot(xcol=xcol, ycol=ycol, **kargs)
+
+
+    def make_isoc(self, age, Z, N = 5000, isoc_columns = None, verbose = False):
+        """
+
+        :param age: float
+        :param Z: float
+        :return:
+        """
+        # \todo write test for this
+
+        # If self.array contains data for the given Z
+        ev_track_mass_set = self[self.Z == Z]
+
+        # If self.array does not contain data fot the given Z
+        # \todo fix problems for single Z in self.Z for yesterday!!!!!!!!
+        # \todo it will allow the change of Z=[Z, self.Z[0]] to Z=Z
+        ev_track_mass_set = self.interp(Z=[Z, self.Z[0]])[0]
+
+        isoc_array = ev_track_mass_set.make_isochrone(age=age,
+                                                      N=N,
+                                                      isoc_columns=isoc_columns,
+                                                      verbose=verbose)
+
+        return isoc_array
+
+    def simplify_array(self, columns, return_object = True):
+        """
+
+        :param columns:
+        :param return_object:
+        :return:
+        """
+
+        #\todo Write the test for this method
+
+        # Use recursivity if the user desires to return a new EvTrack_MassSet
+        # object with the simplified array
+        if return_object:
+            new_set = copy.deepcopy(self)
+            new_set.simplify_array(columns, return_object=False)
+
+            return new_set
+
+        else:
+            # Update self.columns
+            etcol_type = etcol.Ev_track_column
+            if all(isinstance(obj, etcol_type) for obj in columns):
+                columns = utils.etcolobjs2colnames(columns)
+
+            # Create new self.array
+            new_array = np.empty((len(self.Z),
+                                  len(self.M),
+                                  len(self.phase),
+                                  len(columns)))
+            new_array[:] = np.nan
+
+            # Update self.array with simplified data
+            for i in range(len(self)):
+                temp_mass_set = copy.deepcopy(self[i])
+                temp_mass_set.simplify_array(columns=columns,
+                                       return_object=False)
+
+                # Fill the array
+                new_array[i,:,:,:] = temp_mass_set.array
+
+            # Update self.array and self.columns
+            self.array = new_array
+            self.columns = columns
 
     def _check_if_all_needed_info_is_given(self, EvTrack_MassSet_list = None,
                                            Z = None, M = None, phase = None,
@@ -1894,12 +2016,7 @@ class EvTrack_ZSet(object):
                     raise ValueError("Could not assign phase attribute.")
         ########################################################################
 
-
-
-
-
-
-
+#\TODO move this class to Isochrone.py
 class Isochrone(object):
     # \TODO expand this docstring
     """

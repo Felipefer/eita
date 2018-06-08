@@ -263,3 +263,82 @@ if __name__ == "__main__":
 
     if run in ('Y', 'y'):
         test_EvTrack_ZSet_interp_mass_and_phase()
+
+
+def test_EvTrack_ZSet_interp():
+    Z = [0.01, 0.014, 0.017]
+    M = [0.950, 1.000, 1.050]
+
+    model = "PARSEC"
+    path = _parsec_tests_tracks_path
+
+    Set = EvTrack.EvTrack_ZSet(Z=Z, M=M, model=model, path=path)
+
+    Z_new = [0.01, 0.0125, 0.014, 0.0155, 0.017]
+    M_new = [0.950, 0.975, 1.000, 1.025, 1.050]
+
+    print "Interpolating only Z"
+    t0 = time()
+    Set.interp(Z=Z_new)
+    print "Interpolation took {0} seconds.".format(time()-t0)
+
+    fmt = ['k-', 'r-', 'k-', 'g-', 'k-']
+
+    for z in range(len(Set.Z)):
+        for m in range(len(Set.M)):
+            plt.plot(Set.array[z, m, :, 3], Set.array[z, m, :, 2], fmt[z])
+
+    plt.gca().invert_xaxis()
+    plt.show()
+
+    # Reload
+    Set = EvTrack.EvTrack_ZSet(Z=Z, M=M, model=model, path=path)
+
+    print "Interpolating Z and M"
+    t0 = time()
+    Set.interp(Z=Z_new, M=M_new)
+    print "Interpolation took {0} seconds.".format(time()-t0)
+
+    fmt = ['k-', 'r-', 'k-', 'g-', 'k-']
+
+    for z in range(len(Set.Z)):
+        for m in range(len(Set.M)):
+            plt.plot(Set.array[z, m, :, 3], Set.array[z, m, :, 2], fmt[z])
+
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_ZSet_interp() "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_ZSet_interp()
+
+
+def test_EvTrack_ZSet_plot():
+    Z = [0.01, 0.014, 0.017]
+    M = [0.950, 1.000, 1.050]
+
+    model = "PARSEC"
+    path = _parsec_tests_tracks_path
+
+    # Plot whole Set
+    Set = EvTrack.EvTrack_ZSet(Z=Z, M=M, model=model, path=path)
+    Set.plot('log_Teff', 'log_L', color = "#666666", alpha = 0.5)
+
+    # Plot with interpolation
+    Z_new = [0.012, 0.0152]
+    M_new = [0.950, 0.975, 1.000, 1.025, 1.050]
+    Set.plot('log_Teff', 'log_L', Z = Z_new, M = M_new,
+             Zcolor = ['#FF0000', '#00FF00'])
+
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_ZSet_plot() "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_ZSet_plot()
