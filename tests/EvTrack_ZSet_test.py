@@ -342,3 +342,25 @@ if __name__ == "__main__":
 
     if run in ('Y', 'y'):
         test_EvTrack_ZSet_plot()
+
+
+def test_EvTrack_ZSet_load_singleZ_M():
+    Z = 0.01
+    M = 0.950
+
+    model = "PARSEC"
+    path = _parsec_tests_tracks_path
+
+    # Plot whole Set
+    Set = EvTrack.EvTrack_ZSet(Z=Z, M=M, model=model, path=path)
+    Set.plot('log_Teff', 'log_L')
+
+    plt.gca().invert_xaxis()
+    plt.show()
+
+if __name__ == "__main__":
+    run = raw_input(("Run test_EvTrack_ZSet_load_singleZ_M() "
+                     "(y, N): "))
+
+    if run in ('Y', 'y'):
+        test_EvTrack_ZSet_load_singleZ_M()

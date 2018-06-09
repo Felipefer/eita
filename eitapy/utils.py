@@ -30,6 +30,17 @@ def isiterable(x):
     else:
         return False
 
+def array1d(x):
+    """
+    Transform the object x into an array of 1D even if its an int or float
+    :param x: int, float or 1D list-like object
+    :return: array
+    """
+
+    if not isiterable(x):
+        x = [x]
+
+    return np.array(x)
 
 def colnames2etcolobjs(colnames):
     etcols_list = []

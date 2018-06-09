@@ -1441,6 +1441,10 @@ class EvTrack_ZSet(object):
         columns.
         """
 
+        # Fixing for the cases of single Z or single M
+        Z = utils.array1d(Z) if (Z is not None) else None
+        M = utils.array1d(M) if (M is not None) else None
+
         ########################################################################
         # Perform some tests to check if all necessary data is provided
 
@@ -1573,7 +1577,7 @@ class EvTrack_ZSet(object):
                                                       M = M,
                                                       model = model,
                                                       path = path)
-                if EvTrack_MassSet_tmp.M != self.M:
+                if list(EvTrack_MassSet_tmp.M) != list(self.M):
                     EvTrack_MassSet_tmp.interp_mass(self.M)
                 if list(EvTrack_MassSet_tmp.phase) != list(self.phase):
                     EvTrack_MassSet_tmp.interp_phase(self.phase)
@@ -1630,8 +1634,8 @@ class EvTrack_ZSet(object):
         self._interp_Z_function = None
 
         # Transform M and Z to arrays
-        self.M = np.array(self.M)
-        self.Z = np.array(self.Z)
+        self.M = utils.array1d(self.M)
+        self.Z = utils.array1d(self.Z)
 
     def __getitem__(self, i):
         """
@@ -1732,7 +1736,7 @@ class EvTrack_ZSet(object):
             # If interpolation function is recorded, use it.
             if self._interp_Z_function is not None:
                 self.array = self._interp_Z_function(Z)
-                self.Z = Z
+                self.Z = utils.array1d(Z)
 
             else:
                 # Create the interpolation function
@@ -1744,7 +1748,7 @@ class EvTrack_ZSet(object):
                                            **kargs)
 
                 self.array = interp_function(Z)
-                self.Z = Z
+                self.Z = utils.array1d(Z)
 
                 if record_interp_function:
                     self._interp_Z_function = interp_function
