@@ -585,6 +585,9 @@ class EvTrack_MassSet(object):
         ########################################################################
         # Perform some tests to check if all necessary data is provided
 
+        # Prepare Mass parameter for the case M is a single value
+        M = utils.array1d(M) if (M is not None) else None
+
         # Check the method used to load the data
         self.EvTrack_list_is_provided = False
         self.array_is_provided = False
@@ -710,8 +713,13 @@ class EvTrack_MassSet(object):
         # Set up the array
         if self.array_is_provided:
             if len(self.M) == 1:
-                self.array = np.empty((1, array.shape[0], array.shape[1]))
-                self.array[0, :, :] = array
+                if array.ndim == 2:
+                    self.array = np.empty((1, array.shape[0], array.shape[1]))
+                    self.array[0, :, :] = array
+                elif array.ndim == 3:
+                    self.array = array
+                else:
+                    raise AttributeError("Array has wrong number of dimensions.")
             else:
                 self.array = array
 
@@ -884,6 +892,9 @@ class EvTrack_MassSet(object):
         scipy.interpolate module
         """
 
+        # This controls if an interpolation is actually necessary
+        interpolate = True
+
         # If a new EvTrack Set is to be created, copy, evaluate and return it
         if new_object:
             new_set = copy.deepcopy(self)
@@ -893,25 +904,54 @@ class EvTrack_MassSet(object):
 
         # Otherwise, only evaluate
         else:
-            # If interpolation function is recorded, use it.
-            if self._interp_mass_function is not None:
-                self.array = self._interp_mass_function(M)
-                self.M = M
+            # First check if there is enough data to interpolate from.
+            # And also check if data needs to be modified at all.
+            if len(self.M) == 1:
+                M = utils.array1d(M)
+                if list(M) == list(self.M):
+                    # Nothing needs to be modified
+                    interpolate = False
+                else:
+                    raise ValueError("This Set does not contain enough data "
+                                     "to interpolate for this mass.")
 
-            else:
-                # Create the interpolation function
-                interp_function = interp1d(x=self.M,
-                                           y=self.array,
-                                           axis=0,
-                                           bounds_error=False,
-                                           fill_value=np.nan,
-                                           **kargs)
+            if interpolate:
+                # If values asked for interpolation are already present
+                # in the data, use them:
+                if np.in1d(M, self.M).all():
 
-                self.array = interp_function(M)
-                self.M = M
+                    # Even in this case, record the interpolate function if required
+                    if record_interp_function:
+                        self.interp_mass_function = interp1d(x=self.M,
+                                                             y=self.array,
+                                                             axis=0,
+                                                             bounds_error=False,
+                                                             fill_value=np.nan,
+                                                             **kargs)
 
-                if record_interp_function:
-                    self._interp_mass_function = interp_function
+                    self.array = self.array[np.in1d(self.M, M), :, :]
+                    self.M = M
+
+                else:
+                    # If interpolation function is recorded, use it.
+                    if self._interp_mass_function is not None:
+                        self.array = self._interp_mass_function(M)
+                        self.M = M
+
+                    else:
+                        # Create the interpolation function
+                        interp_function = interp1d(x=self.M,
+                                                   y=self.array,
+                                                   axis=0,
+                                                   bounds_error=False,
+                                                   fill_value=np.nan,
+                                                   **kargs)
+
+                        self.array = interp_function(M)
+                        self.M = M
+
+                        if record_interp_function:
+                            self._interp_mass_function = interp_function
 
     def interp(self, M, phase = None, new_object = False,
                     record_interp_function = True, **kargs):
@@ -1528,7 +1568,7 @@ class EvTrack_ZSet(object):
             for i in range(len(self.Z)):
                 # Check if MassSet masses and phases are the same as self
                 EvTrack_MassSet_tmp = EvTrack_MassSet_list[i]
-                if EvTrack_MassSet_tmp.M != self.M:
+                if list(EvTrack_MassSet_tmp.M) != list(self.M):
                     EvTrack_MassSet_tmp.interp_mass(self.M)
                 if list(EvTrack_MassSet_tmp.phase) != list(self.phase):
                     EvTrack_MassSet_tmp.interp_phase(self.phase)
@@ -1661,7 +1701,7 @@ class EvTrack_ZSet(object):
 
     def __iter__(self):
         """
-        Iterates the set returning one EvTrack_MassSet at a time
+        Iterates the set returning one EvTrack_Mass Set at a time
         """
 
         for i in range(len(self.Z)):
@@ -1724,6 +1764,11 @@ class EvTrack_ZSet(object):
         scipy.interpolate module
         """
 
+        # Controls if interpolation is actually necessary
+        interpolate = True
+
+        Z = utils.array1d(Z)
+
         # If a new EvTrack Set is to be created, copy, evaluate and return it
         if new_object:
             new_set = copy.deepcopy(self)
@@ -1732,26 +1777,57 @@ class EvTrack_ZSet(object):
             return new_set
 
         # Otherwise, only evaluate
+
         else:
-            # If interpolation function is recorded, use it.
-            if self._interp_Z_function is not None:
-                self.array = self._interp_Z_function(Z)
-                self.Z = utils.array1d(Z)
+            # First check if there is enough data to interpolate from.
+            # And also check if data needs to be modified at all.
+            if len(self.Z) == 1:
+                if list(Z) == list(self.Z):
+                    # The only data present is also the data wanted,
+                    # in this case, nothing needs to be modified
+                    interpolate = False
+                else:
+                    raise ValueError("This Set does not contain enough data "
+                                     "to interpolate for this mass.")
 
-            else:
-                # Create the interpolation function
-                interp_function = interp1d(x=self.Z,
-                                           y=self.array,
-                                           axis=0,
-                                           bounds_error=False,
-                                           fill_value=np.nan,
-                                           **kargs)
+            if interpolate:
+                # If values asked for interpolation are already present
+                # in the data, use them:
+                if np.in1d(Z, self.Z).all():
 
-                self.array = interp_function(Z)
-                self.Z = utils.array1d(Z)
+                    # Even in this case, record the interpolate function
+                    # if required
+                    if record_interp_function:
+                        self.interp_Z_function = interp1d(x=self.Z,
+                                                          y=self.array,
+                                                          axis=0,
+                                                          bounds_error=False,
+                                                          fill_value=np.nan,
+                                                          **kargs)
 
-                if record_interp_function:
-                    self._interp_Z_function = interp_function
+                    self.array = self.array[np.in1d(self.Z, Z), :, :, :]
+                    self.Z = Z
+
+                else:
+                    # If interpolation function is recorded, use it.
+                    if self._interp_Z_function is not None:
+                        self.array = self._interp_Z_function(Z)
+                        self.Z = utils.array1d(Z)
+
+                    else:
+                        # Create the interpolation function
+                        interp_function = interp1d(x=self.Z,
+                                                   y=self.array,
+                                                   axis=0,
+                                                   bounds_error=False,
+                                                   fill_value=np.nan,
+                                                   **kargs)
+
+                        self.array = interp_function(Z)
+                        self.Z = utils.array1d(Z)
+
+                        if record_interp_function:
+                            self._interp_Z_function = interp_function
 
 
     def interp(self, Z, M = None, phase = None, new_object = False,
@@ -1777,8 +1853,8 @@ class EvTrack_ZSet(object):
 
         else:
             # First prepare input variables
-            Z = self.Z if (Z is None) else np.array(Z)
-            M = self.M if (M is None) else np.array(M)
+            Z = self.Z if (Z is None) else utils.array1d(Z)
+            M = self.M if (M is None) else utils.array1d(M)
             phase = self.phase if (phase is None) else np.array(phase)
 
             # Interpolate mass and phase if necessary
@@ -1799,7 +1875,7 @@ class EvTrack_ZSet(object):
         """
         """
 
-        Z = self.Z if (Z is None) else np.array(Z)
+        Z = self.Z if (Z is None) else utils.array1d(Z)
 
         # Create new evtrack with only the data chosen for ploting:
         evtrack_zset_plot = self.interp(Z = Z, M = M,
