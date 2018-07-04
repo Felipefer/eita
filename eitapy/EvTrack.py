@@ -582,6 +582,7 @@ class EvTrack_MassSet(object):
                         data to contain only the wanted columns.
         """
 
+        self.kind = "MassSet"
         ########################################################################
         # Perform some tests to check if all necessary data is provided
 
@@ -1481,6 +1482,8 @@ class EvTrack_ZSet(object):
         columns.
         """
 
+        self.kind = "ZSet"
+
         # Fixing for the cases of single Z or single M
         Z = utils.array1d(Z) if (Z is not None) else None
         M = utils.array1d(M) if (M is not None) else None
@@ -1907,7 +1910,7 @@ class EvTrack_ZSet(object):
         # If self.array does not contain data fot the given Z
         # \todo fix problems for single Z in self.Z for yesterday!!!!!!!!
         # \todo it will allow the change of Z=[Z, self.Z[0]] to Z=Z
-        ev_track_mass_set = self.interp(Z=[Z, self.Z[0]])[0]
+        ev_track_mass_set = self.interp(Z=Z)[0]
 
         isoc_array = ev_track_mass_set.make_isochrone(age=age,
                                                       N=N,

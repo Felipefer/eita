@@ -29,26 +29,34 @@ class Isochrone(object):
 
     """
 
-    def __init__(self, age = None, Z = None, model='Not_Assigned', path=None,
-                 array=None, columns=None):
+    def __init__(self, age = None, Z = None, N = 5000, EvTrack_Set = None,
+                 model='Not_Assigned', path=None, array=None, columns=None):
 
-        #\TODO write a way to load it from age, Z, EvTrack_MassSet/EvTrack_ZSet
-        # Check if given model is supported in this version of eitapy
+
+        if EvTrack_Set is not None:
+            if array is None:
+                array = EvTrack_Set.make_isochrone(age = age,
+                                                   N = N,
+                                                   isoc_columns=columns)
+            else:
+                raise Warning("In this setting, array will be produced "
+                              "by the EvTrack_Set.make_isochrone")
+
         if model not in load.allowed_models:
             raise ValueError(("{0} is not a supported file format.\n"
                               "Supported formats are {0}."
                               "").format(load.allowed_models))
 
+
         # Load EvTrack according to the file format
-        Isochrone = None
+        IsochroneData = None
 
         IsochroneData = load.LoadedIsochrone(age=age,
                                              Z=Z,
                                              model=model,
                                              path=path,
                                              array=array,
-                                             columns=columns
-                                             )
+                                             columns=columns)
 
         # End of loading
         # Check if loading went fine
@@ -92,8 +100,3 @@ class Isochrone(object):
             self.column_index[column] = i
             self.array[:, i] = getattr(IsochroneData, column)
             setattr(self, column, self.array[:, i])
-
-
-def save(self):
-        # \TODO implement
-        pass
