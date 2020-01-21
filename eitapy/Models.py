@@ -34,7 +34,9 @@ class Model(object):
     def __init__(self,
                  data = None,
                  model = None,
-                 columns = None):
+                 param_list = [],
+                 pred_list = [],
+                 obs_list = []):
         """
 
         Starting Model from from existing pd dataframe
@@ -62,13 +64,18 @@ class Model(object):
 
         # Assign stellar model
         self.model = model
+        self.obs_list = obs_list
+        self.param_list = param_list
+        self.pred_list = pred_list
+
+        self.columns = self.obs_list + self.param_list + self.pred_list
 
         # Load accordingly to input
         if isinstance(data, pd.DataFrame):
             self.data = data
 
         elif isinstance(data, np.array):
-            self.data = pd.DataFrame(data, columns = columns)
+            self.data = pd.DataFrame(data, columns = self.columns)
 
         else:
             raise ValueError("Parameter 'data' must be a numpy.array or "
@@ -80,6 +87,7 @@ class Model(object):
         y = self.data[param2]
 
         plt.plot(x, y)
+
 
 def load_model(filepath, model = None, columns = None, **kwargs):
 
