@@ -92,12 +92,9 @@ def delta_vec_1d(arr):
     """
     arr = np.array(arr)
 
-    delta = arr[1:]-arr[:-1]
-    delta = (delta[:-1]+delta[1:])/2
-
-    delta = np.concatenate(([arr[1]/2-arr[0]/2],
-                            delta,
-                            [arr[-1]/2-arr[-2]/2]))
+    delta = np.empty(len(arr))
+    delta[:-1] = arr[1:]-arr[:-1]
+    delta[-1] = arr[-1]/2-arr[-2]/2
 
     return delta
 
@@ -115,7 +112,7 @@ def delta_vec(arr):
     -------
 
     """
-    print arr.shape
+    #print arr.shape
 
     delta = np.full(arr.shape, np.nan)
 
@@ -138,6 +135,22 @@ def delta_vec(arr):
             delta[:, 1:][slice] = delta_vec(arr_son)
 
     return delta
+
+
+def get_Mabs(mag_apr, mag_apr_err, dist, dist_err, A, A_err, N = 1000):
+
+    # Sample mags, dists and Avs
+    mag_arr  = np.random.normal(mag_apr, mag_apr_err, N)
+    dist_arr = np.abs(np.random.normal(dist, dist_err, N))
+    A_arr   = np.random.normal(A, A_err, N)
+
+    # Calculate absolute magnitudes
+    Mag_arr = mag_arr - 5*np.log10(dist_arr) + 5 - A_arr
+
+    Mag_abs = np.mean(Mag_arr)
+    Mag_abs_err = np.sqrt(np.var(Mag_arr))
+
+    return Mag_abs, Mag_abs_err
 
 
 

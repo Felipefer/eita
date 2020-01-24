@@ -9,6 +9,8 @@ sys.path.insert(0, '../eitapy')
 import pandas as pd
 import numpy as np
 import func as fc
+import Parametrizations as pm
+from scipy.interpolate import interp1d
 
 """Defines the Star and StellarPopulation classes and their methods
 
@@ -56,7 +58,10 @@ class Star(object):
 
 
     def get_param_probs(self, model, delta = True,
-                        obs_list = None, param_list = None, pred_list = None):
+                        param_cols={'t': 't', 'm': 'm', 'Z': 'z'},
+                        obs_list = None, pred_list = None,
+                        param_list = None,
+                        interp = True, Ninterp = 2000):
 
         """
 
@@ -73,16 +78,22 @@ class Star(object):
 
         """
 
+        tcol = param_cols['t']
+        Zcol = param_cols['Z']
+        mcol = param_cols['m']
 
         # Get default list of observables
         if obs_list is None:
             obs_list = list(self.obs.columns)
 
         if param_list is None:
-            param_list = list(model.param_list)
+            param_list = param_cols.keys()
 
         if pred_list is None:
             pred_list = list(model.pred_list)
+
+        if interp:
+            model.interp_mass(tcol, Zcol, mcol, Ninterp = Ninterp)
 
 
         # Sort the model dataframe, which is needed for the proper use of delta
@@ -126,6 +137,49 @@ class Star(object):
         # Prepare output dataframe
         self.probs = model.data.loc[:,param_list+pred_list]
         self.probs['PROB'] = probs
+
+
+
+
+    def get_param_pdf(self, param, imf = 'Kroupa', sfh = 'flat', amr = 'flat',
+                      param_cols = {'t':'t', 'm':'m', 'Z':'z'}, **kwargs):
+
+        # Get the name of the columns
+        mcol = param_cols['m']
+        tcol = param_cols['t']
+        Zcol = param_cols['Z']
+
+        # Get the values of p_i and the intervals
+        param_set = list(set(self.probs[param]))
+        param_set.sort()
+        param_delta = fc.delta_vec_1d(param_set)
+
+        param_probs = np.empty(len(param_set))
+        p_arr = self.probs.loc[:,param].values
+
+        # Do the marginalization
+        for i in range(len(param_set)):
+            p_i = param_set[i]
+
+            # Get the condition to slice the array for this step
+            cond = (p_arr >= p_i) & \
+                   (p_arr < p_i+param_delta[i])
+
+            # Get imf, sfh and amr
+            imf_arr = pm.IMF(m = self.probs.loc[cond,mcol], imf = imf, **kwargs)
+            sfh_arr = pm.SFH(t = self.probs.loc[cond,tcol], sfh = sfh, **kwargs)
+            amr_arr = pm.AMR(Z = self.probs.loc[cond,Zcol], amr = amr, **kwargs)
+
+            probs_arr = self.probs.loc[cond, 'PROB']
+
+            # Sum terms
+            param_probs[i] = np.sum(probs_arr * imf_arr * sfh_arr * amr_arr)
+
+        param_probs = param_probs/param_probs.max()
+
+        pdf = pd.DataFrame({param:param_set, 'prob':param_probs})
+        return pdf
+
 
 
     def pred_pdf(self, param = 'logTe', vmin = None,

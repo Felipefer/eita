@@ -16,6 +16,8 @@ for different scientific tasks.
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
+from time import time
 
 class Model(object):
     """
@@ -88,6 +90,66 @@ class Model(object):
 
         plt.plot(x, y)
 
+    def __add__(self, other_model):
+        self.data = pd.concat([self.data, other_model.data])
+        return self
+
+    def interp_mass(self, tcol = 'logAge', Zcol = 'MH', mcol = 'Mini',
+                    Ninterp = 2000, v = True):
+
+        # if verbose
+        if v:
+            print 'Starting interpolation of {} models'.format(self.model)
+            old_shape = self.data.shape
+            t0 = time()
+
+        # Create the empty dataframe
+        columns = list(self.data.columns)
+        new_data = pd.DataFrame(columns=columns, dtype = float)
+
+        # Get list of t_i
+        t_list = list(set(self.data.loc[:,tcol]))
+        t_list.sort()
+
+        # Loop over each t_i
+        for ti in t_list:
+            # Get list of Z_ij
+            cond_i = self.data.loc[:,tcol].values == ti
+
+            Z_list = list(set(self.data.loc[cond_i,Zcol]))
+            Z_list.sort()
+
+            # Loop over each Z_j
+            for Zj in Z_list:
+                cond_j = self.data.loc[:,Zcol].values == Zj
+                cond_ij = cond_i & cond_j
+
+                data_ij = self.data.loc[cond_ij,:].values
+                m_ij = self.data.loc[cond_ij, mcol].values
+
+                interp_fun = interp1d(m_ij, data_ij, axis = 0)
+
+                m_interp = np.linspace(m_ij.min(), m_ij.max(), Ninterp)
+
+                data_interp = pd.DataFrame(interp_fun(m_interp),
+                                           columns=columns)
+
+                new_data = pd.concat((new_data, data_interp))
+
+
+        # Update self.data
+        self.data = new_data
+
+        if v:
+            new_shape = self.data.shape
+            tf = time()
+            print ("Interpolating changed the shape of the models from {0} to "
+                   "{1}, and took {2} seconds.").format(old_shape,
+                                                        new_shape,
+                                                        tf-t0)
+
+
+
 
 def load_model(filepath, model = None, columns = None, **kwargs):
 
@@ -99,6 +161,28 @@ def load_model(filepath, model = None, columns = None, **kwargs):
     md = Model(data = data, model = model)
 
     return md
+
+
+def load_multiple_models(filelist, model = None, columns = None, **kwargs):
+
+    # Load first model
+    print 'loading model {}'.format(filelist[0])
+    md = load_model(filepath=filelist[0],
+                    model=model,
+                    columns=columns,
+                    **kwargs)
+
+    # Load remaining models
+    for i in range(1, len(filelist)):
+        print 'loading model {}'.format(filelist[i])
+        md = md + load_model(filepath=filelist[i],
+                             model = model,
+                             columns = columns,
+                             **kwargs)
+
+    return md
+
+
 
 
 class EvTrack(Model):
@@ -133,7 +217,8 @@ class Isochrone(Model):
     """
 
 
-    pass
+
+
 
 
 
